@@ -74,6 +74,10 @@ import play.libs.Json;
 import play.mvc.Http.RequestHeader;
 import play.mvc.SimpleResult;
 
+import com.baasbox.service.business.PaymentProcessor;
+import com.baasbox.service.business.TrackingService;
+import com.baasbox.service.sms.PhoneNumberManager;
+
 public class Global extends GlobalSettings {
 	static {
         /*Initialize this before anything else to avoid reflection*/
@@ -130,6 +134,12 @@ public class Global extends GlobalSettings {
 			  
 			  OGlobalConfiguration.MEMORY_USE_UNSAFE.setValue(false);
 
+			  // YB_CODE_START //
+			  // This code should prevent the following bug in Orientdb 1.7. Fingers crossed x x  
+			  //  WARN segment file 'database.ocf' was not closed correctly last time
+			  OGlobalConfiguration.STORAGE_KEEP_OPEN.setValue(false);
+			  // YB_CODE_END //
+			  
 			  if (!NumberUtils.isNumber(System.getProperty("storage.wal.maxSize"))) OGlobalConfiguration.WAL_MAX_SIZE.setValue(1000);
 			  
 			  if (NumberUtils.isNumber(System.getProperty("db.pool.max"))) {
@@ -222,6 +232,16 @@ public class Global extends GlobalSettings {
 		} finally {
     		if (db!=null && !db.isClosed()) db.close();
     	}
+
+        // Initialize BackgroundPaymentProcessor
+        PaymentProcessor.getPaymentProcessor();
+
+        // Initialize PhoneNumberManager
+        PhoneNumberManager.getPhoneNumberManager();
+
+        // Initialize Tracking Service
+        TrackingService.getTrackingService();
+
     	info ("...done");
     	
     	overrideSettings();
@@ -441,6 +461,13 @@ public class Global extends GlobalSettings {
 	    }
 	    info("Destroying session manager...");
 	    SessionTokenProviderMemory.destroySessionTokenProvider();
+
+      info("Destroying Background Payment Processor...");
+      PaymentProcessor.destroyPaymentProcessor();
+
+      info("Destroying Background Tracking Service...");
+      TrackingService.destroyTrackingService();
+
 	    BBConfiguration.shutdown();
 	    info("...BaasBox has stopped");
 		debug("Global.onStop() ended");

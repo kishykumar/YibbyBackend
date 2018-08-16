@@ -354,6 +354,10 @@ $(".btn-action").live("click", function() {
         if(!confirm("Do you want to enable user '"+ unescape(parameters) +"' ?")) return;
             suspendOrActivateUser(false,parameters);
             break;
+    case "approve":
+      if(!confirm("Do you want to approve driver '"+ unescape(parameters) +"' ?")) return;
+          approveDriver(parameters);
+          break;
 	case "delete":
 		switch (actionType)	{
 		case "user":
@@ -422,6 +426,24 @@ function suspendOrActivateUser(suspend,userName)
         }
     );
 }
+
+function approveDriver(userName)
+{
+    userName=unescape(userName);
+    var route = BBRoutes.com.baasbox.controllers.YBAdmin.approveDriver(userName);
+    route.ajax(
+        {
+            data: {"username": userName},
+            error: function(data){
+                alert(JSON.parse(data.responseText)["message"]);
+            },
+            success: function(data){
+                loadUserTable();
+            }
+        }
+    );
+}
+
 function deleteAsset(assetName)
 {
 	BBRoutes.com.baasbox.controllers.Asset.delete(assetName).ajax(
@@ -498,6 +520,9 @@ function openUserEditForm(editUserName){
 	}
 	$("#txtUsername").val(userObject.user.name);
 	$("#txtUserId").val(userObject.id);
+	
+	$("#txtUserAllInfo").val(JSON.stringify(userObject, null, 4));
+	
     loadUserRole(userObject.user.roles[0].name);
 	$("#txtVisibleByTheUser").val(reverseJSON(userObject.visibleByTheUser)).trigger("change");
 	$("#txtVisibleByFriends").val(reverseJSON(userObject.visibleByFriends)).trigger("change");
@@ -1546,6 +1571,11 @@ function getActionButton(action, actionType,parameters){
         classType="btn-danger";
         labelName="disable";
         break;
+    case "approve":
+      iconType = "icon-off";
+      classType="btn-success";
+      labelName="Approve";
+      break;
     }
 	var actionButton = "<a title='" + tooltip + "' data-rel='tooltip' class='btn "+ classType +" btn-action btn-mini' action='"+ action +"' actionType='"+ actionType +"' parameters='"+ parameters +"' href='#'><i class='"+ iconType +"'></i> "+ labelName +"</a>";
 	return actionButton;

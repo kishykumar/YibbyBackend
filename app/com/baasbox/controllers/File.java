@@ -157,7 +157,8 @@ public class File extends Controller {
             String aclJsonString;
             final ArrayList<String> aclUsernames = new ArrayList<String>();
             final ArrayList<String> aclRoles = new ArrayList<String>();
-            if (acl != null && datas.length > 0) {
+            //if (acl != null && datas.length > 0) {
+            if (acl != null) {
                 aclJsonString = acl[0];
                 ObjectMapper mapper = BBJson.mapper();
                 JsonNode aclJson = null;

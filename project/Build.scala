@@ -62,10 +62,17 @@ object ApplicationBuild extends Build {
           "ch.qos.logback" % "logback-classic" % "1.1.2",
           "org.slf4j" % "slf4j-api" % "1.7.6",
  
+          "com.amazonaws" % "aws-java-sdk" % "1.11.117",
+          "com.google.guava" % "guava" % "21.0",
+          "com.twilio.sdk" % "twilio" % "(7.0,7.9)",
+          "com.google.maps" % "google-maps-services" % "0.1.20",
+    		  "com.braintreepayments.gateway" % "braintree-java" % "2.71.0",
+	
           "com.notnoop.apns" % "apns" % "1.0.0.Beta6",
           "com.typesafe" %% "play-plugins-redis" % "2.2.1",
           "org.mockito" % "mockito-core" % "1.10.19" % Test,
           "com.orientechnologies" % "orientdb-lucene" % "1.7.5"
+	  
           //,"redis.clients" % "jedis" % "2.7.2"
           //,"commons-pool" % "commons-pool" % "1.6"
 

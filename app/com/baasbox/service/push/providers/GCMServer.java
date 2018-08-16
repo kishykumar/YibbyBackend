@@ -42,11 +42,14 @@ import com.baasbox.exception.BaasBoxPushException;
 import com.baasbox.service.push.PushNotInitializedException;
 import com.baasbox.service.push.providers.Factory.ConfigurationKeys;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.android.gcm.server.InvalidRequestException;
 import com.google.android.gcm.server.Message;
 import com.google.android.gcm.server.MulticastResult;
+import com.google.android.gcm.server.Notification;
 import com.google.android.gcm.server.Result;
 import com.google.android.gcm.server.Sender;
+import com.google.android.gcm.server.Message.Priority;
 import com.google.common.collect.ImmutableMap;
 
 
@@ -72,13 +75,12 @@ public class GCMServer extends PushProviderAbstract {
 				return true;
 			}
 			JsonNode customDataNodes=bodyJson.get("custom");
-	
-			Map<String,JsonNode> customData = new HashMap<String,JsonNode>();
-	
-			if(!(customDataNodes==null)){
-				customData.put("custom",customDataNodes);
-			}
-	
+            
+			String customDataString = ""; 
+            if(!(customDataNodes==null)){
+                customDataString = customDataNodes.toString();
+            }
+
 			JsonNode collapse_KeyNode=bodyJson.findValue("collapse_key"); 
 			String collapse_key=null; 
 	
@@ -88,6 +90,26 @@ public class GCMServer extends PushProviderAbstract {
 			}
 			else collapse_key="";
 	
+            JsonNode contentAvailable_KeyNode=bodyJson.findValue("content_available"); 
+            Boolean content_available=false; 
+    
+            if(!(contentAvailable_KeyNode==null)) {
+                if(!(contentAvailable_KeyNode.isBoolean())) throw new PushCollapseKeyFormatException("content_available MUST be a Boolean");
+                content_available=contentAvailable_KeyNode.asBoolean();
+            }
+            else content_available=false;
+            
+            JsonNode priority_KeyNode=bodyJson.findValue("priority"); 
+            String priorityStr=null; 
+            Priority priority = Priority.NORMAL;
+            
+            if(!(priority_KeyNode==null)) {
+                if(!(priority_KeyNode.isTextual())) throw new PushCollapseKeyFormatException("priority MUST be either HIGH or NORMAL");
+                priorityStr=priority_KeyNode.asText();
+                priority = Priority.valueOf(priorityStr);
+            }
+            else priority=Priority.NORMAL;
+            
 			JsonNode timeToLiveNode=bodyJson.findValue("time_to_live");
 			int time_to_live = 0;
 	
@@ -101,26 +123,44 @@ public class GCMServer extends PushProviderAbstract {
 	
 			}
 			else time_to_live=MAX_TIME_TO_LIVE; //IF NULL WE SET DEFAULT VALUE (4 WEEKS)
-	
+            
+			/* Build notification */
+            JsonNode notificationNodes=bodyJson.get("notification");
+            Notification notification = null;
+            if(!(notificationNodes==null)){
+                ObjectMapper mapper = new ObjectMapper();
+                com.baasbox.databean.Notification notificationData = mapper.convertValue(notificationNodes, com.baasbox.databean.Notification.class);
+                notification = new Notification.Builder(notificationData.getIcon()).body(notificationData.getBody()).build();
+            } 
+            else  notification= null;
+            
 			if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("collapse_key: " + collapse_key.toString());
 	
 			if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("time_to_live: " + time_to_live);
 	
-			if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("Custom Data: " + customData.toString());
-			
+            if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("Custom Data: " + customDataString);
+            
+			if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("Priority: " + priority.toString());
+
+            if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("Content Available: " + content_available);
+            
+            if (notification != null && BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("Notification: " + notification.toString());
+
 			pushLogger.addMessage("............ messgae: %s", message);
 			pushLogger.addMessage("............ collapse_key: %s", collapse_key);
 			pushLogger.addMessage("............ time_to_live: %s", time_to_live);
-			pushLogger.addMessage("............ custom: %s", customData);
+			pushLogger.addMessage("............ custom: %s", customDataString);
 			pushLogger.addMessage("............ device(s): %s", deviceid);
-			
 	
 			Sender sender = new Sender(apikey);
-			Message msg = new Message.Builder().addData("message", message)
-					.addData("custom", customData.toString())
-					.collapseKey(collapse_key.toString())
-					.timeToLive(time_to_live)
-					.build();
+	         Message msg = new Message.Builder().addData("message", message)
+	                    .notification(notification)
+	                    .addData("custom", customDataString)
+	                    .collapseKey(collapse_key.toString())
+	                    .timeToLive(time_to_live)
+	                    .contentAvailable(content_available)
+	                    .priority(priority)
+	                    .build();
 	
 			MulticastResult result = sender.send(msg, deviceid , 1);
 			
@@ -128,10 +168,18 @@ public class GCMServer extends PushProviderAbstract {
 			pushLogger.addMessage("................. success: %s", result.getSuccess());
 			pushLogger.addMessage("................. failure: %s", result.getFailure());
 			
+            if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("............ message(s) sent: " + result.getTotal());
+            if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("................. success:" + result.getSuccess());
+            if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("................. failure:" + result.getFailure());
+            
 			for (Result r:result.getResults()){
 				pushLogger.addMessage("............ MessageId (null == error): %s",r.getMessageId());
 				pushLogger.addMessage("............... Error Code Name: %s",r.getErrorCodeName());	
 				pushLogger.addMessage("............... Canonincal Registration Id: %s",r.getCanonicalRegistrationId());
+				
+                if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("............ MessageId (null == error): " + r.getMessageId());
+                if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("............... Error Code Name: " + r.getErrorCodeName());
+                if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("............... Canonincal Registration Id: " + r.getCanonicalRegistrationId());
 			}
 			// icallbackPush.onError(ExceptionUtils.getMessage(e));
 	
@@ -139,6 +187,7 @@ public class GCMServer extends PushProviderAbstract {
 			return false;
 		} catch (Exception e) {
 			pushLogger.addMessage("Error sending push notification (GCM)...");
+			if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("Error sending push notification (GCM)...");
 			pushLogger.addMessage(ExceptionUtils.getMessage(e));
 			throw e;
 		}

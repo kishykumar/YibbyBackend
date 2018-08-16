@@ -52,9 +52,15 @@ public enum CustomHttpCode {
 			PUSH_INVALID_APIKEY(50304,503,"Could not save API KEY. HINT: Check your API Key, it's possible that push service aren't enabled in the Google Play Developer Console","error"),
 			PUSH_PROFILE_DISABLED(50305,503,"Push app disabled, one or more app are disabled","error"),
 			PUSH_SWITCH_EXCEPTION(50306,503,"Cannot switch, because settings for the selected mode are missing","error"),
-
-			;
-			private String type;
+			
+            // Yibby error codes
+//          RIDER_CANCELLED_ACTIVE(20097,200,"The ride has already been cancelled by the rider.", "ok"),
+//          DRIVER_CANCELLED_ACTIVE(20098,200,"The ride has already been cancelled by the driver.", "ok"),
+            NO_DRIVERS_ACTIVE(20099,200,"No drivers are currently available for this bid.", "ok"),
+            
+            ;
+    
+            private String type;
 			private int bbCode;
 			private int httpCode;
 			private String description;

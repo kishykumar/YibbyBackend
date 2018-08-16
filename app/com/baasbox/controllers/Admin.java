@@ -56,6 +56,7 @@ import com.baasbox.controllers.actions.filters.ExtractQueryParameters;
 import com.baasbox.controllers.actions.filters.UserCredentialWrapFilterAsync;
 import com.baasbox.dao.RoleDao;
 import com.baasbox.dao.UserDao;
+import com.baasbox.dao.business.CaberDao;
 import com.baasbox.dao.exception.AdminCannotChangeRoleException;
 import com.baasbox.dao.exception.CollectionAlreadyExistsException;
 import com.baasbox.dao.exception.EmailAlreadyUsedException;
@@ -65,6 +66,7 @@ import com.baasbox.dao.exception.InvalidModelException;
 import com.baasbox.dao.exception.InvalidPermissionTagException;
 import com.baasbox.dao.exception.SqlInjectionException;
 import com.baasbox.dao.exception.UserAlreadyExistsException;
+import com.baasbox.databean.CompleteDriverProfile;
 import com.baasbox.db.DbHelper;
 import com.baasbox.enumerations.DefaultRoles;
 import com.baasbox.exception.ConfigurationException;
@@ -84,6 +86,7 @@ import com.baasbox.service.push.providers.PushInvalidApiKeyException;
 import com.baasbox.service.storage.BaasBoxPrivateFields;
 import com.baasbox.service.storage.CollectionService;
 import com.baasbox.service.storage.StatisticsService;
+import com.baasbox.service.user.FriendShipService;
 import com.baasbox.service.user.RoleService;
 import com.baasbox.service.user.UserService;
 import com.baasbox.util.ConfigurationFileContainer;
@@ -93,9 +96,13 @@ import com.baasbox.util.JSONFormats.Formats;
 import com.baasbox.util.QueryParams;
 import com.baasbox.util.Util;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.orientechnologies.orient.core.db.record.ODatabaseRecordTx;
+import com.orientechnologies.orient.core.id.ORID;
 import com.orientechnologies.orient.core.index.OIndexException;
 import com.orientechnologies.orient.core.metadata.security.ORole;
 import com.orientechnologies.orient.core.metadata.security.OUser;
@@ -110,6 +117,35 @@ public class Admin extends Controller {
 
   static String backupDir = DbManagerService.backupDir;
   static String fileSeparator = DbManagerService.fileSeparator;
+
+  // YB_CODE_START //
+  static String prepareResponseToJson(List<ODocument> listOfDoc) {
+      response().setContentType("application/json");
+      try {
+          //remove from the users' roles attribute those roles that indicate friendships
+          for (ODocument doc : listOfDoc){
+              doc.detach(); //detaching record to avoid dirty update on DB
+              
+              if (BBConfiguration.getInstance().isSessionEncryptionEnabled()) {  
+                  // get the existing profile
+                  String encryptedDriverDetailsStr = doc.field(CaberDao.ENCRYPTED_DRIVER_DETAILS_FIELD_NAME);
+                  doc.field(CaberDao.ENCRYPTED_DRIVER_DETAILS_FIELD_NAME, CompleteDriverProfile.getDecryptedProfileString(encryptedDriverDetailsStr));
+                  
+//                  CompleteDriverProfile dp = CompleteDriverProfile.getDecryptedProfile(encryptedDriverDetailsStr);
+//                  if (dp != null) {
+//                      ObjectMapper mapper = new ObjectMapper();
+//                      JsonNode jsn = mapper.valueToTree(dp);
+//                      
+//                      doc.field(CaberDao.ATTRIBUTES_VISIBLE_BY_FRIENDS_USER, jsn);  //here is why we have detached the record. We do not want to save it, ever!
+//                  }
+              }
+          }
+          return JSONFormats.prepareResponseToJson(listOfDoc,JSONFormats.Formats.USER_LOAD_BY_ADMIN);
+      } catch (IOException e) {
+          throw new RuntimeException(e);
+      }
+  }
+  // YB_CODE_END //
 
   public static F.Promise<Result> getUsers() {
     if (BaasBoxLogger.isTraceEnabled())
@@ -126,7 +162,12 @@ public class Admin extends Controller {
         return badRequest("The request is malformed: check your query criteria");
       }
       try {
-        ret = JSONFormats.prepareResponseToJson(users, JSONFormats.Formats.USER_LOAD_BY_ADMIN);
+
+        // YB_CODE_START //
+        ret = prepareResponseToJson(users);
+        // BB_CODE -> ret = JSONFormats.prepareResponseToJson(users, JSONFormats.Formats.USER_LOAD_BY_ADMIN);
+        // YB_CODE_END //
+
       } catch (Throwable e) {
         return internalServerError(ExceptionUtils.getFullStackTrace(e));
       }
@@ -257,7 +298,7 @@ public class Admin extends Controller {
     String description;
     JsonNode json = request().body().asJson();
     if (json != null) {
-      description = Objects.firstNonNull(json.findPath("description").textValue(), "");
+      description = MoreObjects.firstNonNull(json.findPath("description").textValue(), "");
     } else {
       description = "";
     }

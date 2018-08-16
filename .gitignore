@@ -28,3 +28,4 @@ server.pid
 /bin
 conf/generated.keystore
 dump.rdb
+*.log

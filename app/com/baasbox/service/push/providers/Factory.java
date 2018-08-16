@@ -54,7 +54,7 @@ public class Factory {
 		}
 		switch (vendor) {
 			case IOS:
-				return new APNServer();
+				return new GCMServer();
 			case ANDROID:
 				return new GCMServer();
 		}
@@ -63,7 +63,7 @@ public class Factory {
 	
 	public static HashMap<VendorOS,IPushServer> getAllIstances(){
 		HashMap<VendorOS,IPushServer> ret = new HashMap<VendorOS,IPushServer>();
-		ret.put(VendorOS.IOS,BBConfiguration.getInstance().getPushMock()?new PushProviderMock():new APNServer());
+		ret.put(VendorOS.IOS,BBConfiguration.getInstance().getPushMock()?new PushProviderMock():new GCMServer());
 		ret.put(VendorOS.ANDROID,BBConfiguration.getInstance().getPushMock()?new PushProviderMock():new GCMServer());
 		return ret;
 	}

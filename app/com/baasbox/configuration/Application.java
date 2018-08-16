@@ -38,8 +38,16 @@ public enum Application implements IProperties{
 
 	NETWORK_HTTP_SSL("network.http.ssl", "Set to TRUE if the BaasBox server is reached via SSL through a reverse proxy.", Boolean.class),	
 	NETWORK_HTTP_URL("network.http.url", "The public url of the BaasBox server. I.e. the url used by the App to contact BaasBox, without the protocol prefix (i.e. http://) and PORT", String.class),
-	NETWORK_HTTP_PORT("network.http.port", "The public TCP port used by the App to contact BaasBox. Please note: when behind a reverse proxy, this could be different from the port used by BaasBox.", Integer.class);	
-	
+  NETWORK_HTTP_PORT("network.http.port", "The public TCP port used by the App to contact BaasBox. Please note: when behind a reverse proxy, this could be different from the port used by BaasBox.", Integer.class),
+  DYNAMIC_DEBUG_LEVEL("dynamic.debug.level", "Used to dynamically change application debug level.", String.class,
+            new IPropertyChangeCallback(){
+                public void change(final Object iCurrentValue, final Object iNewValue){
+                    BaasBoxLogger.info("Application Changing debug level to: " + iNewValue.toString());
+                    BaasBoxLogger.setDynamicLogLevel(iNewValue.toString());
+                }
+            })
+  ;
+
 	private final String                 key;
 	private final Class<?>               type;
 	private String                       description;

@@ -204,13 +204,17 @@ public class UserService {
 		ODocument user=getUserProfilebyUsername(username);
 		ODocument systemProps=user.field(UserDao.ATTRIBUTES_SYSTEM);
 		ArrayList<ODocument> loginInfos=systemProps.field(UserDao.USER_LOGIN_INFO);
-		for (ODocument loginInfo : loginInfos){
-
-			if (loginInfo.field(UserDao.USER_PUSH_TOKEN)!=null && loginInfo.field(UserDao.USER_PUSH_TOKEN).equals(pushToken) && loginInfo.field(UserDao.USER_DEVICE_OS).equals(os)){
-				found=true;
-				break;
-			}
-		}
+		
+		loginInfos.clear();
+		
+//		for (ODocument loginInfo : loginInfos){
+//
+//			if (loginInfo.field(UserDao.USER_PUSH_TOKEN)!=null && loginInfo.field(UserDao.USER_PUSH_TOKEN).equals(pushToken) && loginInfo.field(UserDao.USER_DEVICE_OS).equals(os)){
+//				found=true;
+//				break;
+//			}
+//		}
+		
 		if (!found){
 			loginInfos.add(new ODocument(data));
 			systemProps.save();
@@ -290,10 +294,12 @@ public class UserService {
 			ODatabaseRecordTx db =  DbHelper.getConnection();
 			ODocument profile=null;
 			UserDao dao = UserDao.getInstance();
-			if (privateAttributes!=null && privateAttributes.has("email")) {
-				boolean checkEmail=dao.emailIsAlreadyUsed((String) privateAttributes.findValuesAsText("email").get(0));
-				if (checkEmail) throw new EmailAlreadyUsedException("The email provided is already in use by another user");
-			}
+			
+//			if (privateAttributes!=null && privateAttributes.has("email")) {
+//				boolean checkEmail=dao.emailIsAlreadyUsed((String) privateAttributes.findValuesAsText("email").get(0));
+//				if (checkEmail) throw new EmailAlreadyUsedException("The email provided is already in use by another user");
+//			}
+			
 			try{
 			    //because we have to create an OUser record and a User Object, we need a transaction
 			

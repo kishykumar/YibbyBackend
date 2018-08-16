@@ -109,13 +109,13 @@ PUT		/me/username				com.baasbox.controllers.User.changeUserName()
 #forgotten password
 
 # @tag(baasbox.account.lost_password)
-GET		/user/:username/password/reset   	com.baasbox.controllers.User.resetPasswordStep1(username: String)
+GET		/user/:username/password/reset   	com.baasbox.controllers.Caber.resetPasswordStep1(username: String)
 
 # @tag(baasbox.account.lost_password)
-GET		/user/password/reset/:base64     	com.baasbox.controllers.User.resetPasswordStep2(base64: String)
+GET		/user/password/reset/:base64     	com.baasbox.controllers.Caber.resetPasswordStep2(base64: String)
 
 # @tag(baasbox.account.lost_password)
-POST	/user/password/reset/:base64     	com.baasbox.controllers.User.resetPasswordStep3(base64: String)
+POST	/user/password/reset/:base64     	com.baasbox.controllers.Caber.resetPasswordStep3(base64: String)
 
 #Queries against users different by the logged one
 
@@ -182,6 +182,7 @@ PUT 	/push/enable/:os/:pushToken     com.baasbox.controllers.Push.enablePush(os:
 
 # @tag(baasbox.notifications.receive)
 PUT 	/push/disable/:pushToken        com.baasbox.controllers.Push.disablePush(pushToken: String)
+
 #deprecated
 # @tag(baasbox.notifications.receive)
 PUT 	/push/device/:os/:deviceId      com.baasbox.controllers.Push.enablePush(os: String, deviceId: String)
@@ -418,6 +419,86 @@ POST	/root/db/import         							    com.baasbox.controllers.Root.importDb()
 #ROOT set or override some configuration parameters
 POST	/root/configuration         							com.baasbox.controllers.Root.overrideConfiguration()
 GET		/root/configuration										com.baasbox.controllers.Root.getOverridableConfiguration()
+
+###### Added Resources
+
+# @tag(baasbox.notifications.receive)
+PUT     /driver/push/enable/:os/:pushToken     com.baasbox.controllers.DriverPush.enableDriverPush(os: String, pushToken: String)
+
+# @tag(baasbox.notifications.receive)
+PUT     /driver/push/disable/:pushToken        com.baasbox.controllers.DriverPush.disableDriverPush(pushToken: String)
+
+#bids and offers
+POST     /bid                          			com.baasbox.controllers.Bid.createBid()
+GET      /bid/:uuid                    			com.baasbox.controllers.Bid.getBidDetails(uuid:String)
+POST     /bid/:bid/accept              			com.baasbox.controllers.Bid.acceptBid(bid:String)
+POST     /bid/:bid/reject           			com.baasbox.controllers.Bid.rejectBid(bid:String) 
+
+#ride
+POST     /ride/:bidId/driver-arrived           	com.baasbox.controllers.Ride.driverArrived(bidId: String)
+POST     /ride/:bidId/start                    	com.baasbox.controllers.Ride.start(bidId: String)
+POST     /ride/:bidId/end                      	com.baasbox.controllers.Ride.end(bidId: String)
+POST     /ride/r/cancel                       	com.baasbox.controllers.Ride.cancelByRider()
+POST     /ride/d/cancel                       	com.baasbox.controllers.Ride.cancelByDriver()
+GET	     /rides									com.baasbox.controllers.Ride.getRides()
+POST     /ride/review                       	com.baasbox.controllers.Ride.createReview()
+
+#caber
+POST    /caber                                  com.baasbox.controllers.Caber.signUp()
+POST    /caber/login                            com.baasbox.controllers.Caber.login()
+POST    /caber/activate                         com.baasbox.controllers.Caber.activate()
+POST    /caber/deactivate                       com.baasbox.controllers.Caber.deactivate()
+POST    /caber/complete                         com.baasbox.controllers.Caber.completeDriverSignUp()
+GET     /caber/stats							com.baasbox.controllers.Caber.getStats()
+
+#pickup stats
+GET     /nearest_eta            				com.baasbox.controllers.LocationResource.getNearestDriverEta()
+
+#email
+GET		/email/verify							com.baasbox.controllers.Caber.verifyEmail()
+POST	/email/support							com.baasbox.controllers.Email.sendEmailToSupport()
+
+#calling/texting
+POST 	/call-tracking/forward-call				com.baasbox.controllers.Communication.forwardCall()
+POST 	/sms-tracking/forward-sms				com.baasbox.controllers.Communication.forwardSMS()
+
+#payment
+POST    /client_token							com.baasbox.controllers.Payment.createClientToken()
+POST    /payment/default/:token					com.baasbox.controllers.Payment.makeDefaultPaymentMethod(token: String)
+POST    /payment/:nonce							com.baasbox.controllers.Payment.addPaymentMethod(nonce: String)
+DELETE  /payment/:token    						com.baasbox.controllers.Payment.deletePaymentMethod(token: String)
+PUT     /payment								com.baasbox.controllers.Payment.updatePaymentMethod()
+GET		/payment								com.baasbox.controllers.Payment.getPaymentMethods()
+POST    /braintree/webhook						com.baasbox.controllers.Payment.processBraintreeWebhook()
+
+#online or offline status
+POST	/caber/status							com.baasbox.controllers.Caber.statusSetup()
+
+#caber data sync
+GET     /caber/sync 							com.baasbox.controllers.Caber.sync()
+
+#location tracking
+###POST    /location                               com.baasbox.controllers.LocationResource.update()
+#GET     /location/d/:driverName					com.baasbox.controllers.LocationResource.getDriverLocation(driverName: String)
+#GET     /location/r/:riderName					com.baasbox.controllers.LocationResource.getRiderLocation(riderName: String)
+GET     /location/d/bid/:bidId					com.baasbox.controllers.LocationResource.getDriverLocationByBidId(bidId: String)
+
+# @tag(baasbox.account)
+POST    /caber/logout/:pushToken                com.baasbox.controllers.Caber.logoutWithDevice(pushToken: String)
+
+# @tag(baasbox.account)
+POST    /caber/logout                           com.baasbox.controllers.Caber.logoutWithoutDevice()
+
+GET     /caber                               	com.baasbox.controllers.Caber.getCurrentCaber()
+PUT     /caber                               	com.baasbox.controllers.Caber.updateProfile()
+PUT     /caber/suspend                       	com.baasbox.controllers.Caber.disable()
+
+PUT     /admin/driver/approve/:username  com.baasbox.controllers.YBAdmin.approveDriver(username: String)
+
+
+#dumb service
+POST     /caber/dumb/:message					com.baasbox.controllers.Caber.dumb(message: String)
+
 
 # Home page & general API
 GET		/refresh												com.baasbox.controllers.Generic.refreshSessionToken()

@@ -159,3 +159,187 @@ create property _BB_Script._invalid boolean;
 alter property _BB_Script._invalid mandatory=true;
 alter property _BB_Script._invalid notnull=true;
 create index _BB_Script.name unique;
+
+
+
+
+
+--Bid
+create class _BB_Bid extends _BB_Node;
+
+create property _BB_Bid.bidPrice DOUBLE;
+alter property _BB_Bid.bidPrice mandatory=true;
+alter property _BB_Bid.bidPrice notnull=true;
+
+create property _BB_Bid.pickupLat DOUBLE;
+alter property _BB_Bid.pickupLat mandatory=true;
+alter property _BB_Bid.pickupLat notnull=true;
+
+create property _BB_Bid.pickupLong DOUBLE;
+alter property _BB_Bid.pickupLong mandatory=true;
+alter property _BB_Bid.pickupLong notnull=true;
+
+create property _BB_Bid.pickupLoc String;
+alter property _BB_Bid.pickupLoc mandatory=true;
+alter property _BB_Bid.pickupLoc notnull=true;
+
+create property _BB_Bid.dropoffLat DOUBLE;
+alter property _BB_Bid.dropoffLat mandatory=true;
+alter property _BB_Bid.dropoffLat notnull=true;
+
+create property _BB_Bid.dropoffLong DOUBLE;
+alter property _BB_Bid.dropoffLong mandatory=true;
+alter property _BB_Bid.dropoffLong notnull=true;
+
+create property _BB_Bid.dropoffLoc String;
+alter property _BB_Bid.dropoffLoc mandatory=true;
+alter property _BB_Bid.dropoffLoc notnull=true;
+
+create property _BB_Bid.driversList LINKLIST;
+create property _BB_Bid.declineDriversList LINKLIST;
+create property _BB_Bid.acceptDriversList LINKLIST;
+
+create property _BB_Bid.finalDriver LINK;
+alter property _BB_Bid.finalDriver notnull=true;
+
+--driver
+create class _BB_Driver extends _BB_Node;
+create class _BB_DriverAttributes extends ORestricted;
+create property _BB_Driver.visibleByAnonymousDrivers link _BB_DriverAttributes;
+create property _BB_Driver.visibleByRegisteredDrivers link _BB_DriverAttributes;
+create property _BB_Driver.visibleByFriend link _BB_DriverAttributes;
+create property _BB_Driver.visibleByTheDriver link _BB_DriverAttributes;
+
+create property _BB_Driver.active BOOLEAN;
+
+create property _BB_Driver._audit embedded;
+create property _BB_Driver.user link ouser;
+alter property _BB_Driver.user mandatory=true;
+alter property _BB_Driver.user notnull=true;
+
+
+-- issue 447 - Restrict signup to 1 account per email
+create property _bb_driverattributes.email string;
+--the enforcement of the uniqueness of registration email is performed by the code due the fact that there could be email fields in other profile sections
+create index _bb_driverattributes.email notunique;
+create index _bb_driver.user.name unique
+
+--ride
+create class _BB_Ride extends _BB_Node;
+
+create property _BB_Ride.rider link;
+alter property _BB_Ride.rider mandatory=true;
+alter property _BB_Ride.rider notnull=true;
+
+create property _BB_Ride.driver link;
+alter property _BB_Ride.driver mandatory=true;
+alter property _BB_Ride.driver notnull=true;
+
+create property _BB_Ride.duration Integer;
+
+create property _BB_Ride.pickupTime datetime;
+
+create property _BB_Ride.dropoffTime datetime;
+
+create property _BB_Ride.driverEnRouteTime datetime;
+
+create property _BB_Ride.finalPickupLat DOUBLE;
+
+create property _BB_Ride.finalPickupLong DOUBLE;
+
+create property _BB_Ride.finalPickupLoc String;
+
+create property _BB_Ride.finalDropoffLat DOUBLE;
+
+create property _BB_Ride.finalDropoffLong DOUBLE;
+
+create property _BB_Ride.finalDropoffLoc String;
+
+create property _BB_Ride.tip DOUBLE;
+
+create property _BB_Ride.ridePrice DOUBLE;
+
+create property _BB_Ride.driverEarnedAmount DOUBLE;
+
+create property _BB_Ride.creditCardFee DOUBLE;
+
+create property _BB_Ride.driverStartLat DOUBLE;
+
+create property _BB_Ride.driverStartLong DOUBLE;
+
+create property _BB_Ride.driverStartLoc String;
+
+--vehicle
+create class _BB_Vehicle extends _BB_Node;
+
+create property _BB_Vehicle.inspectionFormPicture link;
+alter property _BB_Vehicle.inspectionFormPicture mandatory=true;
+alter property _BB_Vehicle.inspectionFormPicture notnull=true;
+
+create property _BB_Vehicle.exteriorColor String;
+alter property _BB_Vehicle.exteriorColor mandatory=true;
+alter property _BB_Vehicle.exteriorColor notnull=true;
+
+create property _BB_Vehicle.licensePlate String;
+alter property _BB_Vehicle.licensePlate mandatory=true;
+alter property _BB_Vehicle.licensePlate notnull=true;
+
+create property _BB_Vehicle.make String;
+alter property _BB_Vehicle.make mandatory=true;
+alter property _BB_Vehicle.make notnull=true;
+
+create property _BB_Vehicle.model String;
+alter property _BB_Vehicle.model mandatory=true;
+alter property _BB_Vehicle.model notnull=true;
+
+create property _BB_Vehicle.year Integer;
+alter property _BB_Vehicle.year mandatory=true;
+alter property _BB_Vehicle.year notnull=true;
+
+create property _BB_Vehicle.capacity Integer;
+alter property _BB_Vehicle.capacity mandatory=true;
+alter property _BB_Vehicle.capacity notnull=true;
+
+--daily stats
+create class _BB_DailyStats extends _BB_Node;
+
+create property _BB_DailyStats.username String;
+alter property _BB_DailyStats.username mandatory=true;
+alter property _BB_DailyStats.username notnull=true;
+
+create property _BB_DailyStats.collectionDate date;
+alter property _BB_DailyStats.collectionDate mandatory=true;
+alter property _BB_DailyStats.collectionDate notnull=true;
+
+create property _BB_DailyStats.onlineTime Integer;
+create property _BB_DailyStats.earning DOUBLE;
+create property _BB_DailyStats.totalTrips Integer;
+
+--weekly stats
+create class _BB_WeeklyStats extends _BB_Node;
+
+create property _BB_WeeklyStats.username String;
+alter property _BB_WeeklyStats.username mandatory=true;
+alter property _BB_WeeklyStats.username notnull=true;
+
+create property _BB_WeeklyStats.collectionStartDate date;
+alter property _BB_WeeklyStats.collectionStartDate mandatory=true;
+alter property _BB_WeeklyStats.collectionStartDate notnull=true;
+
+create property _BB_WeeklyStats.collectionEndDate date;
+alter property _BB_WeeklyStats.collectionEndDate mandatory=true;
+alter property _BB_WeeklyStats.collectionEndDate notnull=true;
+
+create property _BB_WeeklyStats.onlineTime Integer;
+create property _BB_WeeklyStats.earning DOUBLE;
+create property _BB_WeeklyStats.paidAmount DOUBLE;
+create property _BB_WeeklyStats.totalTrips Integer;
+
+--payment stats
+create class _BB_PaymentStats extends _BB_Node;
+
+create property _BB_PaymentStats.collectionDate date;
+alter property _BB_PaymentStats.collectionDate mandatory=true;
+alter property _BB_PaymentStats.collectionDate notnull=true;
+
+create property _BB_PaymentStats.status Integer;

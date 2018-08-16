@@ -89,6 +89,7 @@ import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientGraphNoTx;
+import com.orientechnologies.orient.core.tx.OTransaction.TXTYPE;
 
 public class DbHelper {
 
@@ -155,7 +156,8 @@ public class DbHelper {
 		if (!isInTransaction()) {
 			if (BaasBoxLogger.isTraceEnabled())
 				BaasBoxLogger.trace("Begin transaction");
-			db.begin();
+			//db.begin();
+			db.begin(TXTYPE.OPTIMISTIC);
 		}
 		tranCount.set(tranCount.get().intValue() + 1);
 		if (BaasBoxLogger.isDebugEnabled())
@@ -500,16 +502,36 @@ public class DbHelper {
 		if (tranCount.get()>0) throw new SwitchUserContextException("Cannot switch to admin context within an open transaction");
 		DbHelper.close(DbHelper.getConnection());
 		try {
-			return open(appcode.get(),
-					BBConfiguration.getInstance().getBaasBoxAdminUsername(),
-					BBConfiguration.getInstance().getBaasBoxAdminPassword());
+		    
+		    String myappcode = null;
+            if (appcode.get().equals(""))
+              myappcode = BBConfiguration.getInstance().getAPPCODE();
+            else
+                myappcode = appcode.get();
+            return open (myappcode, 
+                    BBConfiguration.getInstance().getBaasBoxAdminUsername(),
+                    BBConfiguration.getInstance().getBaasBoxAdminPassword());
+            
+//			return open(appcode.get(),
+//					BBConfiguration.getInstance().getBaasBoxAdminUsername(),
+//					BBConfiguration.getInstance().getBaasBoxAdminPassword());
 		} catch (InvalidAppCodeException e) {
 			throw new RuntimeException(e);
 		}
 	}
 
+    public static void closeAsAdmin () {
+        if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("closing connection");
+        DbHelper.close(DbHelper.getConnection());
+    }
+    
 	public static ODatabaseRecordTx reconnectAsAuthenticatedUser() {
 		if (tranCount.get()>0) throw new SwitchUserContextException("Cannot switch to user context within an open transaction");
+		
+		if (Http.Context.current.get() == null) {
+            return null;
+        }
+		
 		DbHelper.close(DbHelper.getConnection());
 		try {
 			return open(appcode.get(), getCurrentHTTPUsername(),

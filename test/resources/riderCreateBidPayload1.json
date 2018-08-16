@@ -1,0 +1,12 @@
+{
+  "bidHigh": 15, 
+  "bidLow":  5,  
+  "etaHigh": 10, 
+  "etaLow": 5,
+  "pickupLat": 17.564,
+  "pickupLong": 18.43,
+  "pickupLoc": "744 Edgewater Blvd, Foster City, CA, 94404",
+  "dropoffLat": 19.3242,
+  "dropoffLong":54.231231,
+  "dropoffLoc": "801 Foster City Blvd Apt 109, Santa Clara, CA, 95054"
+}

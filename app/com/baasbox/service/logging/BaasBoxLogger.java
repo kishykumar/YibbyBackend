@@ -19,6 +19,8 @@ package com.baasbox.service.logging;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.LoggerFactory;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import play.Logger.ALogger;
 
 /**
@@ -31,18 +33,57 @@ public class BaasBoxLogger  {
 
 	public static final ALogger eventSourceLogger = play.Logger.of(EVENT_SOURCE_LOGGER);
 	public static final org.slf4j.Logger playUnderlyingLogger = play.Logger.underlying();
+	public static Level previousLevel = null;
 	
 	//this is not thread safe, but ATM this is not a problem and we do not want to create a bottleneck 
 	private static boolean isEventSourceLoggerEnabled=false;
 	
-	public static void startEventSourceLogging(){
-		isEventSourceLoggerEnabled=true;
-		ch.qos.logback.classic.Logger logger = ((ch.qos.logback.classic.Logger)
-				LoggerFactory.getLogger(EVENT_SOURCE_LOGGER)) ;
+    public static void setDynamicLogLevel(String level) {
+        
+        /* Hack: Toggle the log level between debug and the default. */
+        Logger root = (Logger)playUnderlyingLogger;
+        
+        if (level.equalsIgnoreCase(Level.DEBUG.levelStr)) {
+            root.setLevel(Level.DEBUG);
+        } else if (level.equalsIgnoreCase(Level.ALL.levelStr)) {
+            root.setLevel(Level.ALL);
+        } else if (level.equalsIgnoreCase(Level.TRACE.levelStr)) {
+            root.setLevel(Level.TRACE);
+        } else if (level.equalsIgnoreCase(Level.ERROR.levelStr)) {
+            root.setLevel(Level.ERROR);
+        } else if (level.equalsIgnoreCase(Level.INFO.levelStr)) {
+            root.setLevel(Level.INFO);
+        } else if (level.equalsIgnoreCase(Level.WARN.levelStr)) {
+            root.setLevel(Level.WARN);
+        } else if (level.equalsIgnoreCase(Level.OFF.levelStr)) {
+            root.setLevel(Level.OFF);
+        }
+    }
+    
+    public static void startEventSourceLogging(){
+        isEventSourceLoggerEnabled=true;
+        ch.qos.logback.classic.Logger logger = ((ch.qos.logback.classic.Logger)
+                LoggerFactory.getLogger(EVENT_SOURCE_LOGGER)) ;
         if (logger.getAppender(BaasBoxEvenSourceAppender.name) == null) 
-        	logger.addAppender(BaasBoxEvenSourceAppender.appender);
-	}
-	
+            logger.addAppender(BaasBoxEvenSourceAppender.appender);
+        
+        /* Hack: Toggle the log level between debug and the default. */
+        Logger root = (Logger)playUnderlyingLogger;
+        
+        Level currentLevel = root.getLevel();
+        if (previousLevel == null) {
+            previousLevel = currentLevel;
+        }
+        
+        if (currentLevel == previousLevel) {
+            root.setLevel(Level.DEBUG);
+        } else {
+            root.setLevel(previousLevel);
+        }
+        
+        previousLevel = currentLevel;
+    }
+    
 	public static void stopEventSourceLogging(){
 		isEventSourceLoggerEnabled=false;
 		 ((ch.qos.logback.classic.Logger)LoggerFactory.getLogger(EVENT_SOURCE_LOGGER)) 

@@ -16,17 +16,26 @@ var  userDataArray= new Array();
 			"aoColumns": [ {"mData": "user.name", "mRender": function(data,type,full){
 					            html = data;
 					            if(data !="admin" && data != "baasbox" && data!="internal_admin"){
-					               html = full.user.name + (full.id?" <br> " + full.id:"");
+					               html = full.user.name + (full.name?" <br> " + full.name:"") + (full.email?" <br> " + full.email:"") + 
+					               			(full.phoneNumber?" <br> " + full.phoneNumber:"") + (full.id?" <br> " + full.id:"");
 					               html = getActionButton("followers","user",escape(data))+"&nbsp;"+html;
 					            }
 					            return html;
 							}},
 			               {"mData": "user.roles.0.name"},
+			               {"mData": "type","sDefaultContent":""},
 			               {"mData": "signUpDate","sDefaultContent":""},
 			               {"mData": "user.status","mRender": function ( data, type, full ) {
 			            	   var classStyle="label-success"
 			            		   if (data!="ACTIVE") classStyle="label-important";
 			            	   var htmlReturn="<span class='label "+classStyle+"'>"+data+"</span> ";
+			            	   
+								classStyle="label-danger"
+			            	   	var paymentAccountStatus = full.paymentAccountApproved;
+			            	   	if (paymentAccountStatus != undefined) {
+                               		htmlReturn = htmlReturn + "<span class='label "+classStyle+"'>"+paymentAccountStatus+"</span> ";
+                               	}
+                               	
 			            	   return htmlReturn;
 			               }
 			               },
@@ -34,8 +43,18 @@ var  userDataArray= new Array();
 			            	   if(data.name!="admin" && data.name!="baasbox" && data.name!="internal_admin") {
 	                               var _active = data.status == "ACTIVE";
 	                               var escapedName=escape(data.name);
-	                               return getActionButton("edit", "user", escapedName) + "&nbsp;" + getActionButton("changePwdUser", "user", escapedName) +
-	                                   "&nbsp;" + getActionButton(_active?"suspend":"activate", "user", escapedName) +   getActionButton("drop", "user", escapedName);
+	                               
+	                               var approved = full.approved;
+	                               
+	                               var approvedStr = ""
+	                               if (approved == false) {
+	                                 approvedStr = getActionButton("approve", "user", escapedName);
+	                               }
+	                               	                               
+	                               return getActionButton("edit", "user", escapedName) + "&nbsp;" + 
+	                                       getActionButton("changePwdUser", "user", escapedName) + "&nbsp;" + 
+	                                       getActionButton(_active?"suspend":"activate", "user", escapedName)  + "&nbsp;" + 
+	                                       approvedStr;
 	                           }
 			            	   return "No action available";
 			               },bSortable:false
