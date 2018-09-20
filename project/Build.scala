@@ -24,6 +24,7 @@ import com.typesafe.sbteclipse.core._
 import com.typesafe.sbt.packager.Keys.stage
 import com.typesafe.sbt.SbtNativePackager.Universal
 import java.io.File
+import com.github.play2war.plugin._
 
 object ApplicationBuild extends Build {
 	override def settings = super.settings ++ Seq(
@@ -83,10 +84,12 @@ object ApplicationBuild extends Build {
     val baas = taskKey[File]("distribute standard baasbox format")
 
 
-    val main = play.Project(appName, appVersion, appDependencies).settings(
-       sources in doc in Compile := List(),
+    val main = play.Project(appName, appVersion, appDependencies)
+            .settings(Play2WarPlugin.play2WarSettings: _*)
+            .settings(sources in doc in Compile := List()
+                      ,Play2WarKeys.servletVersion := "3.1"
 
-      resolvers := Seq(
+      ,resolvers := Seq(
       	  "typesafe" at "https://repo.typesafe.com/typesafe/releases/",
           "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases",
           "sonatype-snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",

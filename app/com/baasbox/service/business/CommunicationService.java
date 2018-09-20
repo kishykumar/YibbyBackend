@@ -18,8 +18,6 @@
 
 package com.baasbox.service.business;
 
-import java.util.Objects;
-
 import com.baasbox.controllers.Ride;
 import com.baasbox.dao.business.CaberDao;
 import com.baasbox.dao.exception.InternalException;
@@ -35,9 +33,18 @@ public class CommunicationService {
         String outgoingPhoneNumber = null;
 
         DbHelper.reconnectAsAdmin();
-        ODocument rideDoc = RideService.getRideWithAnonymousPhoneNumber(anonymousPhoneNumber);        
+        ODocument rideDoc = RideService.getRideWithAnonymousPhoneNumber(anonymousPhoneNumber);
+        
+        if (rideDoc == null) {
+            return null;
+        }
+        
         ODocument driverDoc = rideDoc.field(Ride.DRIVER_FIELD_NAME);
         ODocument riderDoc = rideDoc.field(Ride.RIDER_FIELD_NAME);
+        
+        if (driverDoc == null || riderDoc == null) {
+            return null;
+        }
         
         String riderPhoneNumber = (String)riderDoc.field(CaberDao.PHONE_NUMBER_FIELD_NAME);
         String driverPhoneNumber = (String)driverDoc.field(CaberDao.PHONE_NUMBER_FIELD_NAME);

@@ -36,9 +36,10 @@ import com.baasbox.databean.RideBean;
 import com.baasbox.db.DbHelper;
 import com.baasbox.db.YBDbHelper;
 import com.baasbox.enumerations.Permissions;
+import com.baasbox.exception.DriverCancelledException;
 import com.baasbox.exception.IllegalRequestException;
 import com.baasbox.exception.PaymentServerException;
-import com.baasbox.exception.RideCancelledException;
+import com.baasbox.exception.RiderCancelledException;
 import com.baasbox.exception.RideNotFoundException;
 import com.baasbox.push.databean.BidPushBean;
 import com.baasbox.push.databean.DriverPushBean;
@@ -156,8 +157,9 @@ public class BiddingService {
 
             List<String> driverUsernames = new ArrayList<String>();
             try {
-                // create a temporary payment authorization
-                String transactionId = PaymentService.createTemporaryTransaction(bid.getPaymentMethodToken(), bid.getBidPrice().toString());
+                // create a temporary payment authorization of $5 (today)
+                String transactionId = PaymentService.createTemporaryTransaction(bid.getPaymentMethodToken(), 
+                        PaymentService.DEFAULT_TEMP_TRANSACTION_CHARGE); // Earlier the temp charge used to be the bid amount-> bid.getBidPrice().toString());
                 bidDoc.field(Bid.TEMP_TRANSACTION_ID_FIELD_NAME, transactionId);
 
                 // 1. save the list of drivers
@@ -238,7 +240,7 @@ public class BiddingService {
         synchronized (this) {
 
             myBidDoc.reload();
-            BaasBoxLogger.info("====== Offer rejected: " + driverDoc);
+            BaasBoxLogger.debug("====== Offer rejected: " + driverDoc);
 
             List<ODocument> rejectedDrivers = myBidDoc.field(Bid.DECLINE_DRIVERS_LIST_FIELD_NAME);
     
@@ -339,8 +341,11 @@ public class BiddingService {
                 rb.setDriverEta(0);
                 rb.setTripEta(0);
                 rb.setRidePrice(bidPrice.doubleValue());
-                rb.setDriverStartLat(driverCurrentLocation.getLatitude());
-                rb.setDriverStartLong(driverCurrentLocation.getLongitude());
+                
+                if (driverCurrentLocation != null) {
+                    rb.setDriverStartLat(driverCurrentLocation.getLatitude());
+                    rb.setDriverStartLong(driverCurrentLocation.getLongitude());
+                }
 
                 ODocument rideDoc = null;
                 RidePushBeanRider pbRider = null;
@@ -406,7 +411,7 @@ public class BiddingService {
                 // DbHelper.closeAsAdmin();
                 
             } else {
-                BaasBoxLogger.info("====== Offer discarded: " + driverDoc);
+                BaasBoxLogger.debug("====== Offer discarded: " + driverDoc);
                 pbDriver = new RidePushBeanDriver(); // empty ride == no ride
             }
             
@@ -913,7 +918,7 @@ public class BiddingService {
                     
                     if (driver != null) {
                         driversDoc.add(driver);
-                        BaasBoxLogger.info("Found one driver nearby: " + cd.getUsername());   
+                        BaasBoxLogger.debug("Found one driver nearby: " + cd.getUsername());   
                     }
                     else {
                         BaasBoxLogger.warn("Could not load the profile of the found driver: " + cd.getUsername());
@@ -921,7 +926,7 @@ public class BiddingService {
                 }
             }
             
-            BaasBoxLogger.info("==== List of drivers nearby: " + nearbyDrivers.toString()); 
+            BaasBoxLogger.debug("==== List of drivers nearby: " + nearbyDrivers.toString()); 
             return driversDoc;
         }
         else {
@@ -975,7 +980,7 @@ public class BiddingService {
 			throws SqlInjectionException, InvalidModelException, 
 							IllegalRequestException, BidNotFoundException, 
 							RideNotFoundException, PaymentServerException,
-							RideCancelledException {
+							RiderCancelledException, DriverCancelledException {
 		
 	    if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("====== setBidState: bid ODoc state: " + state);
 	    
@@ -986,6 +991,9 @@ public class BiddingService {
 
         synchronized (this) {
 
+            bidDoc.reload();
+            rideDoc.reload();
+            
             Integer rideDocCancelReason = (Integer)rideDoc.field(Ride.CANCEL_REASON);
             
             // If the ride is already cancelled, then whatever operation the rider or driver is doing on the bid can't be completed
@@ -994,10 +1002,11 @@ public class BiddingService {
                 
                 // If the rider is trying to cancel the ride
                 if (state == BidConstants.VALUE_STATE_CLOSED_RIDE_CANCELLED_BY_RIDER) {
-                    throw new RideCancelledException("The ride has already been cancelled by the driver.");
+                    throw new DriverCancelledException("The ride has already been cancelled by the driver.");
                 }
+                // If the d is trying to cancel the ride
                 else 
-                    throw new RideCancelledException("The ride has already been cancelled by the rider.");
+                    throw new RiderCancelledException("The ride has already been cancelled by the rider.");
             }
             
     		ODocument driverDoc = rideDoc.field(Ride.DRIVER_FIELD_NAME);
@@ -1031,11 +1040,24 @@ public class BiddingService {
                     driverCurrentLocation = 
                             TrackingService.getTrackingService().getDriverLocation(driverUserName);
     
-    			    rideDoc.field(Ride.FINAL_PICKUP_LAT_FIELD_NAME, driverCurrentLocation.getLatitude());
-    			    rideDoc.field(Ride.FINAL_PICKUP_LONG_FIELD_NAME, driverCurrentLocation.getLongitude());
-    			    
-    			    LatLng origin = new LatLng(driverCurrentLocation.getLatitude(), driverCurrentLocation.getLongitude());
-    			    
+                    LatLng origin = null;
+                    if (driverCurrentLocation != null) {
+        			    rideDoc.field(Ride.FINAL_PICKUP_LAT_FIELD_NAME, driverCurrentLocation.getLatitude());
+        			    rideDoc.field(Ride.FINAL_PICKUP_LONG_FIELD_NAME, driverCurrentLocation.getLongitude());
+        			    origin = new LatLng(driverCurrentLocation.getLatitude(), driverCurrentLocation.getLongitude());
+                    } else {
+                    
+                        LocationBean pickupLocation = 
+                                new LocationBean((Double)bidDoc.field(Bid.PICKUP_LAT_FIELD_NAME), 
+                                        (Double)bidDoc.field(Bid.PICKUP_LONG_FIELD_NAME), 
+                                        bidDoc.field(Bid.PICKUP_LOC_FIELD_NAME).toString());
+
+                        // Hope that the driver picked up from the right place
+                        rideDoc.field(Ride.FINAL_PICKUP_LAT_FIELD_NAME, pickupLocation.getLatitude());
+                        rideDoc.field(Ride.FINAL_PICKUP_LONG_FIELD_NAME, pickupLocation.getLongitude());
+                        origin = new LatLng(pickupLocation.getLatitude(), pickupLocation.getLongitude());
+                    }
+                    
     			    LatLng dest = new LatLng(
     			            (Double)bidDoc.field(Bid.DROPOFF_LAT_FIELD_NAME), 
     			            (Double)bidDoc.field(Bid.DROPOFF_LONG_FIELD_NAME));
@@ -1055,8 +1077,21 @@ public class BiddingService {
                         driverCurrentLocation = 
                                 TrackingService.getTrackingService().getDriverLocation(driverUserName);
                         
-    	                rideDoc.field(Ride.DRIVER_ARRIVAL_LAT_FIELD_NAME, driverCurrentLocation.getLatitude());
-    	                rideDoc.field(Ride.DRIVER_ARRIVAL_LONG_FIELD_NAME, driverCurrentLocation.getLongitude());
+                        if (driverCurrentLocation != null) {
+        	                rideDoc.field(Ride.DRIVER_ARRIVAL_LAT_FIELD_NAME, driverCurrentLocation.getLatitude());
+        	                rideDoc.field(Ride.DRIVER_ARRIVAL_LONG_FIELD_NAME, driverCurrentLocation.getLongitude());
+                        } else {
+                            
+                            // If we don't have the driver location, just use the initial rider pickup location
+                            LocationBean pickupLocation = 
+                                    new LocationBean((Double)bidDoc.field(Bid.PICKUP_LAT_FIELD_NAME), 
+                                            (Double)bidDoc.field(Bid.PICKUP_LONG_FIELD_NAME), 
+                                            bidDoc.field(Bid.PICKUP_LOC_FIELD_NAME).toString());
+
+                            // Hope that the driver picked up from the right place
+                            rideDoc.field(Ride.DRIVER_ARRIVAL_LAT_FIELD_NAME, pickupLocation.getLatitude());
+                            rideDoc.field(Ride.DRIVER_ARRIVAL_LONG_FIELD_NAME, pickupLocation.getLongitude());
+                        }
     
     	                message = DRIVER_ARRIVED_PUSH_MESSAGE;
     	                
@@ -1075,8 +1110,20 @@ public class BiddingService {
                     driverCurrentLocation = 
                             TrackingService.getTrackingService().getDriverLocation(driverUserName);
     
-                    rideDoc.field(Ride.FINAL_DROPOFF_LAT_FIELD_NAME, driverCurrentLocation.getLatitude());
-                    rideDoc.field(Ride.FINAL_DROPOFF_LONG_FIELD_NAME, driverCurrentLocation.getLongitude());
+                    if (driverCurrentLocation != null) {
+                        rideDoc.field(Ride.FINAL_DROPOFF_LAT_FIELD_NAME, driverCurrentLocation.getLatitude());
+                        rideDoc.field(Ride.FINAL_DROPOFF_LONG_FIELD_NAME, driverCurrentLocation.getLongitude());
+                    } else {
+                        // If we don't have the driver location, just use the initial rider dropoff location
+                        LocationBean dropoffLocation = 
+                                new LocationBean((Double)bidDoc.field(Bid.DROPOFF_LAT_FIELD_NAME), 
+                                        (Double)bidDoc.field(Bid.DROPOFF_LONG_FIELD_NAME), 
+                                        bidDoc.field(Bid.DROPOFF_LOC_FIELD_NAME).toString());
+
+                        // Hope that the driver picked up from the right place
+                        rideDoc.field(Ride.FINAL_DROPOFF_LAT_FIELD_NAME, dropoffLocation.getLatitude());
+                        rideDoc.field(Ride.FINAL_DROPOFF_LONG_FIELD_NAME, dropoffLocation.getLongitude());
+                    }
     
                     // Create the payment transaction
                     String paymentMethodToken = (String)bidDoc.field(Bid.PAYMENT_METHOD_TOKEN_FIELD_NAME);
@@ -1098,24 +1145,16 @@ public class BiddingService {
     			    break;
     			    
     			case BidConstants.VALUE_STATE_CLOSED_RIDE_CANCELLED_BY_RIDER:
+                case BidConstants.VALUE_STATE_CLOSED_RIDE_CANCELLED_BY_DRIVER:
 
     			    rideDoc.field(Ride.CANCEL_REASON, new Integer(cancelCode));
     			    
+    			    // Void the temp transaction
     			    PaymentService.cancelTripWithoutFees(authTransactionId);
     			    
     			    tripCleanup(rideDoc);
-    			    
     			    message = RIDE_CANCELLED_PUSH_MESSAGE;
     			    
-    			    break;
-    			    
-    	        case BidConstants.VALUE_STATE_CLOSED_RIDE_CANCELLED_BY_DRIVER:
-    	            rideDoc.field(Ride.CANCEL_REASON, new Integer(cancelCode));
-    	            
-    	            tripCleanup(rideDoc);
-    	            
-    	            message = RIDE_CANCELLED_PUSH_MESSAGE;
-    	            
     	            break;
     			}
     			
@@ -1193,7 +1232,7 @@ public class BiddingService {
     public void createFeedback(String userType, String feedback, Integer rating, Double tip, 
             ODocument bidDoc, ODocument caberDoc) 
                     throws SqlInjectionException, InvalidModelException, PaymentServerException,
-                    RideNotFoundException, RideCancelledException {
+                    RideNotFoundException, RiderCancelledException {
         
         RideDao rideDao = RideDao.getInstance();
         
@@ -1208,7 +1247,7 @@ public class BiddingService {
             Integer rideDocCancelReason = (Integer)rideDoc.field(Ride.CANCEL_REASON);
             // non null cancel reason means ride has been cancelled
             if (rideDocCancelReason != null) {
-                throw new RideCancelledException("Ride has been cancelled.");
+                throw new RiderCancelledException("Ride has been cancelled.");
             }
             
             DbHelper.reconnectAsAdmin();

@@ -72,7 +72,7 @@ public class TrackingService {
 	
 	// If caber does not send periodic online update to server, his/her online status should be modified offline. Current is 5 minutes.
 	// This should be used when validating nearby drivers for a bid, based on last report time stamp. NOT in effect yet.
-	private static final long VALUE_ONLINE_TIME_OUT_IN_S = (30 * 60);
+	public static final long VALUE_ONLINE_TIME_OUT_IN_S = (5 * 60);
 
 	protected long  backgroundTrackingLaunchInMinutes = 1; //the BackgroundProcessor will be launch each x minutes.
     

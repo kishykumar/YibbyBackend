@@ -59,7 +59,10 @@ public class PaymentService {
     private final static String FARE_TRANSACTION_DESCRIPTOR_NAME = "YIBBY*RIDE FARE";
     private final static String CANCELLATION_FEE_TRANSACTION_DESCRIPTOR_NAME = "YIBBY*CANCEL TRIP";
     
-    private final static BigDecimal DEFAULT_SERVICE_FEE = new BigDecimal(0.10); // 10%
+    //private final static BigDecimal DEFAULT_SERVICE_FEE = new BigDecimal(0.10); // 10%
+    private final static BigDecimal DEFAULT_SERVICE_FEE = new BigDecimal(0.00); // 0%
+    
+    public final static String DEFAULT_TEMP_TRANSACTION_CHARGE = "5.00"; // $5 temp transaction
     
 	public static String getClientTokenFromCustomerId(String customerId) throws PaymentServerException {
 	    return PaymentFactory.getInstance(currentVendor).getClientTokenFromCustomerId(customerId);

@@ -33,6 +33,7 @@ import com.baasbox.service.business.RideService;
 import com.baasbox.service.logging.BaasBoxLogger;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.twilio.base.ResourceSet;
+import com.twilio.exception.TwilioException;
 import com.twilio.rest.api.v2010.account.IncomingPhoneNumber;
 import com.twilio.rest.api.v2010.account.IncomingPhoneNumberReader;
 
@@ -47,6 +48,9 @@ public class PhoneNumberManager {
     private static List<String> usedPhoneNumbers;
     
     private PhoneNumberManager() {
+        
+        BaasBoxLogger.debug("Initializing PhoneNumberManager");
+        
 //        Twilio.init(Config.getAccountSid(), Config.getAuthToken());
         twilioClient = new TwilioRestClient.Builder(Config.getAccountSid(), Config.getAuthToken()).build();
         
@@ -90,7 +94,7 @@ public class PhoneNumberManager {
 	    usedPhoneNumbers.remove(phoneNumber);
 	}
 	
-	synchronized public String getRandomPhoneNumber() {
+	synchronized public String getRandomPhoneNumber() throws TwilioException {
 
 	    // Purchase a phone number if the available phone numbers are zero
 	    if (availablePhoneNumbers.size() == 0) {

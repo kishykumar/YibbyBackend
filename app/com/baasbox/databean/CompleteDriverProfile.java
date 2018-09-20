@@ -226,7 +226,7 @@ public class CompleteDriverProfile {
 
         // update driver's license, if given  
         DriverLicense newDriverLicense = newProfile.getDriverLicense();
-        if (driverLicense != null) {
+        if (newDriverLicense != null) {
             this.getDriverLicense().merge(newDriverLicense);
         }
 

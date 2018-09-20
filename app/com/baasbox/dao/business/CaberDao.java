@@ -1,9 +1,13 @@
 package com.baasbox.dao.business;
 
+import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
 import com.baasbox.dao.UserDao;
 import com.baasbox.dao.exception.InvalidModelException;
 import com.baasbox.dao.exception.SqlInjectionException;
+import com.baasbox.service.business.TrackingService;
 import com.baasbox.util.QueryParams;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 
@@ -189,8 +193,12 @@ public class CaberDao extends UserDao {
 
     public List<ODocument> getOnlineCabers() throws SqlInjectionException, InvalidModelException {
 
-        QueryParams criteria = QueryParams.getInstance().where(CaberDao.CLIENT_STATUS_FIELD_NAME + "=?")
-                .params(new String[] { DriverClientStatus.ONLINE.getType() });
+        Date curTime = new Date();
+        Date onlineTimeCutoff = new Date(curTime.getTime() - TimeUnit.SECONDS.toMillis(TrackingService.VALUE_ONLINE_TIME_OUT_IN_S));
+
+        QueryParams criteria = QueryParams.getInstance().where(CaberDao.CLIENT_STATUS_FIELD_NAME + "=? and " + 
+                                            CaberDao.CLIENT_STATUS_SINCE_FIELD_NAME + " >=?")
+                .params(new Object[] { DriverClientStatus.ONLINE.getType(), onlineTimeCutoff });
 
         List<ODocument> listOfCabers = this.get(criteria);
         if (listOfCabers == null || listOfCabers.size() == 0)

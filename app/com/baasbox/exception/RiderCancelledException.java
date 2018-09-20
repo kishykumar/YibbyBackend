@@ -18,23 +18,23 @@
 
 package com.baasbox.exception;
 
-public class RideCancelledException extends BaasBoxException {
+public class RiderCancelledException extends BaasBoxException {
 
-	public RideCancelledException() {
+	public RiderCancelledException() {
 		// TODO Auto-generated constructor stub
 	}
 
-	public RideCancelledException(String arg0) {
+	public RiderCancelledException(String arg0) {
 		super(arg0);
 		// TODO Auto-generated constructor stub
 	}
 
-	public RideCancelledException(Throwable arg0) {
+	public RiderCancelledException(Throwable arg0) {
 		super(arg0);
 		// TODO Auto-generated constructor stub
 	}
 
-	public RideCancelledException(String arg0, Throwable arg1) {
+	public RiderCancelledException(String arg0, Throwable arg1) {
 		super(arg0, arg1);
 		// TODO Auto-generated constructor stub
 	}

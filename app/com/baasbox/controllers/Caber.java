@@ -644,6 +644,7 @@ public class Caber extends Controller {
             try {   
                 profileDoc = CaberService.updateDriverProfile(profile);
             } catch (Throwable e) {
+                BaasBoxLogger.error (ExceptionUtils.getFullStackTrace(e));
                 return badRequest(ExceptionUtils.getMessage(e));
             }
             
@@ -1526,8 +1527,8 @@ public class Caber extends Controller {
                 DateFormat df = new SimpleDateFormat(DateUtil.YB_DATE_FORMAT);
                 Date startDate = df.parse(startDateStr);
                 Date endDate = df.parse(endDateStr);
-              
-              retJsonNode = 
+
+                retJsonNode = 
                       mapper.valueToTree(StatsManager.getDriverStatsByWeek(profileDoc, startDate, endDate));
                 
             } else {

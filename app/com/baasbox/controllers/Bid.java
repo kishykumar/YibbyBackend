@@ -71,7 +71,7 @@ public class Bid extends Controller {
 	
 	public static final String BID_ID_FIELD = "bidId";
 
-	private static final Double RIDICULOUS_BID_VALUE = 200.0;
+	private static final Double RIDICULOUS_BID_VALUE = 500.0;
 	
 	private static String prepareResponseToJson(ODocument doc){
 		response().setContentType("application/json");
@@ -159,7 +159,7 @@ public class Bid extends Controller {
 		}
 		
 		if (b.getBidPrice() >= RIDICULOUS_BID_VALUE) {
-			return badRequest("Error: Your bid of $"+ BID_PRICE_FIELD_NAME +"is too high");
+			return badRequest("Error: Your bid of $"+ b.getBidPrice() +" is too high");
 		}
 
 		ODocument bidDoc = null;

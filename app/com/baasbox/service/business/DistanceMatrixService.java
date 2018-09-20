@@ -173,7 +173,7 @@ public class DistanceMatrixService {
         
         double distance = DistanceCalculationService.distance(loc.lat, loc.lng, driverLati, driverLongi, 'M');
         
-        BaasBoxLogger.info("==== Calculated one distance: " + distance);
+        BaasBoxLogger.debug("DistMatSvc::isDriverNearby Calculated one distance: " + distance);
         
         if (distance > BiddingService.VALID_DRIVER_RANGE_LIMIT_IN_MILE) {
             return false;
@@ -199,16 +199,18 @@ public class DistanceMatrixService {
                 
                 GeoLocation geoLocation = TrackingService.getTrackingService().getDriverLocation(driverUserName);
                 
-                LatLng driverLoc = new LatLng(geoLocation.getLatitude(), geoLocation.getLongitude());
-                
-                // TODO: Sort by distance and keep top 10 drivers
-                if (geoLocation != null && isDriverNearby(loc, driverLoc)) {
-                    nearbyDrivers.add(new UserNameAndLocation(driverUserName, driverLoc));
-                    BaasBoxLogger.info("Found one driver nearby: " + driverUserName);   
+                    if (geoLocation != null) {
+                    LatLng driverLoc = new LatLng(geoLocation.getLatitude(), geoLocation.getLongitude());
+                    
+                    // TODO: Sort by distance and keep top 10 drivers
+                    if (geoLocation != null && isDriverNearby(loc, driverLoc)) {
+                        nearbyDrivers.add(new UserNameAndLocation(driverUserName, driverLoc));
+                        BaasBoxLogger.debug("DistMatSvc::getNearbyDriversList Found one driver nearby: " + driverUserName);   
+                    }
                 }
             }
             
-            BaasBoxLogger.info("==== List of drivers nearby: " + nearbyDrivers.toString()); 
+            BaasBoxLogger.debug("DistMatSvc::getNearbyDriversList List of drivers nearby: " + nearbyDrivers.toString()); 
             return nearbyDrivers;
         }
         else {

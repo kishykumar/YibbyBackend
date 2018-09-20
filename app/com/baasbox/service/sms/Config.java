@@ -20,16 +20,25 @@ package com.baasbox.service.sms;
 
 public class Config {
 
-    private static final String TWILIO_ACCOUNT_SID = "AC3c6596e54fb4234e5878ce26225a7ab2";
-    private static final String TWILIO_AUTH_TOKEN = "d2e75d556100e06dcc9877298cfb60e2";
-    private static final String TWILIO_YIBBY_ACCOUNT_PHONE_NUMBER = "+14158531800";
-    private static final String TWILIO_APP_SID = "AP13499050c927b32fecd527249321d716";
+    private static final boolean isSandbox = false;
+    
+    private static final String TWILIO_ACCOUNT_SID = "AC9795e797a39a596da6224d7601661a37";
+    private static final String TWILIO_AUTH_TOKEN = "fe8dbf1a25ad61a4930cb97c90523846";
+    private static final String TWILIO_YIBBY_ACCOUNT_PHONE_NUMBER = "+16505132644";
+    private static final String TWILIO_APP_SID = "APa67e700e52da6edce9d1663a54d5710b";
+    
+    private static final String SANDBOX_TWILIO_ACCOUNT_SID = "ACc2c07cb06a40366d90b984d03cd332a1";
+    private static final String SANDBOX_TWILIO_AUTH_TOKEN = "b1fe85f4115c035be2c065cd50105ce8";
     
     public static String getAccountSid() {
+        if (isSandbox) return SANDBOX_TWILIO_ACCOUNT_SID;
+        
         return TWILIO_ACCOUNT_SID;
     }
 
     public static String getAuthToken() {
+        if (isSandbox) return SANDBOX_TWILIO_AUTH_TOKEN;
+        
         return TWILIO_AUTH_TOKEN;
     }
 

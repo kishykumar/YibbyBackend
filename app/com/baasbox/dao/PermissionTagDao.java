@@ -211,6 +211,10 @@ public class PermissionTagDao  {
 
     private OIdentifiable findByName(String tagName) throws SqlInjectionException{
         OIndex idx = db.getMetadata().getIndexManager().getIndex(INDEX);
+        
+        if (idx == null)
+            return null;
+        
         return  (OIdentifiable)idx.get(tagName);
     }
 

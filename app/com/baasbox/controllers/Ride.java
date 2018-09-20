@@ -36,9 +36,10 @@ import play.mvc.Http.Context;
 import com.baasbox.controllers.actions.filters.ConnectToDBFilter;
 import com.baasbox.controllers.actions.filters.ExtractQueryParameters;
 import com.baasbox.controllers.actions.filters.UserCredentialWrapFilter;
+import com.baasbox.exception.DriverCancelledException;
 import com.baasbox.exception.IllegalRequestException;
 import com.baasbox.exception.PaymentServerException;
-import com.baasbox.exception.RideCancelledException;
+import com.baasbox.exception.RiderCancelledException;
 import com.baasbox.exception.RideNotFoundException;
 import com.baasbox.push.databean.PushBean;
 import com.baasbox.push.databean.RidePushBeanDriver;
@@ -292,7 +293,7 @@ public class Ride extends Controller {
             return badRequest(e.getMessage());
         } catch (RideNotFoundException e) {
             return badRequest(e.getMessage());
-        } catch (RideCancelledException e) {
+        } catch (RiderCancelledException e) {
             return badRequest(e.getMessage() != null ? e.getMessage() : "");
         }
         
@@ -325,7 +326,7 @@ public class Ride extends Controller {
 
 		} catch (RideNotFoundException e) {
             return badRequest(e.getMessage());
-        } catch (RideCancelledException e) {
+        } catch (RiderCancelledException e) {
             return badRequest(e.getMessage() != null ? e.getMessage() : "");
         } catch (SqlInjectionException e) {
             return badRequest(e.getMessage());
@@ -369,7 +370,7 @@ public class Ride extends Controller {
             
         } catch (RideNotFoundException e) {
             return badRequest(e.getMessage());
-        } catch (RideCancelledException e) {
+        } catch (RiderCancelledException e) {
             return badRequest(e.getMessage() != null ? e.getMessage() : "");
         } catch (SqlInjectionException e) {
             return badRequest(e.getMessage());
@@ -421,7 +422,7 @@ public class Ride extends Controller {
             return badRequest(e.getMessage());
         } catch (BidNotFoundException e) {
             return badRequest(e.getMessage());
-        } catch (RideCancelledException e) {
+        } catch (RiderCancelledException e) {
             return badRequest(e.getMessage() != null ? e.getMessage() : "");
         } catch (Exception e) {
             BaasBoxLogger.debug(ExceptionUtils.getStackTrace(e));
@@ -482,12 +483,15 @@ public class Ride extends Controller {
             
         } catch (RideNotFoundException e) {
             return badRequest("Ride not found for bidId: " + bidId);
-        } catch (RideCancelledException e) {
-            return badRequest(e.getMessage() != null ? e.getMessage() : "");
+        } catch (DriverCancelledException e) {
+            return status(CustomHttpCode.DRIVER_CANCELLED.getBbCode(), CustomHttpCode.DRIVER_CANCELLED.getDescription());
         } catch (PaymentServerException | SqlInjectionException| InvalidModelException | IllegalRequestException e) {
             return badRequest(e.getMessage() != null ? e.getMessage() : "");
         } catch (BidNotFoundException e) {
             return badRequest("Bid not found: " + bidId);
+        } catch (RiderCancelledException e) {            
+            BaasBoxLogger.error("ERROR! cancelByRider stack: " + ExceptionUtils.getFullStackTrace(e));
+            return internalServerError(ExceptionUtils.getFullStackTrace(e));
         }
 
 		return ok(result);
@@ -544,12 +548,15 @@ public class Ride extends Controller {
             
         } catch (RideNotFoundException e) {
             return badRequest("Ride not found for bidId: " + bidId);
-        } catch (RideCancelledException e) {
-            return badRequest(e.getMessage() != null ? e.getMessage() : "");
+        } catch (RiderCancelledException e) {
+            return status(CustomHttpCode.RIDER_CANCELLED.getBbCode(), CustomHttpCode.RIDER_CANCELLED.getDescription());
         } catch (PaymentServerException | SqlInjectionException| InvalidModelException | IllegalRequestException e) {
             return badRequest(e.getMessage() != null ? e.getMessage() : "");
         } catch (BidNotFoundException e) {
             return badRequest("Bid not found: " + bidId);
+        } catch (DriverCancelledException e) {
+            BaasBoxLogger.error("ERROR! cancelByDriver stack: " + ExceptionUtils.getFullStackTrace(e));
+            return internalServerError(ExceptionUtils.getFullStackTrace(e));
         }
 		
 		return ok(result);

@@ -1096,8 +1096,11 @@ public class CaberService extends UserService {
                 caberDoc.field(CaberDao.CLIENT_STATUS_FIELD_NAME, status.getType());
                 
                 // If status goes from OFFLINE to ONLINE, timestamp the online start time
-                if (oldStatus == DriverClientStatus.OFFLINE.getType() && 
+                if (    ((oldStatus == null) || 
+                         (oldStatus.equalsIgnoreCase(DriverClientStatus.OFFLINE.getType()))) && 
                     status == DriverClientStatus.ONLINE) {
+                    
+                    BaasBoxLogger.debug("CaberService::updateDriverStatus2: status since timestamp: " + curTime);
                     caberDoc.field(CaberDao.CLIENT_STATUS_SINCE_FIELD_NAME, curTime);
                 }
                 caberDoc.save();
@@ -1105,7 +1108,7 @@ public class CaberService extends UserService {
             
             } catch (ONeedRetryException e) {
                 
-                BaasBoxLogger.debug("CaberService::updateDriverStatus2: Needs retry");
+                BaasBoxLogger.debug("CaberService::updateDriverStatus3: Needs retry");
 
                 // retry
                 caberDoc.reload();

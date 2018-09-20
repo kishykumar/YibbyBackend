@@ -74,6 +74,7 @@ public class PaymentProcessor {
     }
     
 	public PaymentProcessor() {
+	    BaasBoxLogger.debug("Initializing PaymentProcessor");
 		startBackgroundProcessor(backgroundProcessorLaunchInMinutes * 60000); //converts minutes in milliseconds
 	};
 	

@@ -37,7 +37,7 @@ public class LocationResource  extends Controller {
 	 */
 	@With ({UserCredentialWrapFilter.class,ConnectToDBFilter.class})
 	public static Result getDriverLocation(String driverName) {
-		BaasBoxLogger.info("====== driver location: " + driverName);
+		BaasBoxLogger.debug("====== driver location: " + driverName);
 		
 		GeoLocation location = TrackingService.getTrackingService().getDriverLocation(driverName);
 		
@@ -63,7 +63,7 @@ public class LocationResource  extends Controller {
 	 */
 	@With ({UserCredentialWrapFilter.class,ConnectToDBFilter.class})
 	public static Result getRiderLocation(String riderName) {
-		BaasBoxLogger.info("====== rider location: " + riderName);
+		BaasBoxLogger.debug("====== rider location: " + riderName);
 		
 		GeoLocation location = TrackingService.getTrackingService().getDriverLocation(riderName);
 		
@@ -96,7 +96,7 @@ public class LocationResource  extends Controller {
 			return badRequest("Bid id is needed.");
 		}
 		
-		BaasBoxLogger.info("==== Getting location for bid: " + bidId);
+		BaasBoxLogger.debug("==== Getting location for bid: " + bidId);
 		
 		ODocument bid = null;
 		// validate the bid

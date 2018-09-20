@@ -343,7 +343,6 @@ public class Push extends Controller {
 
 
 	@With ({UserCredentialWrapFilterAsync.class,ConnectToDBFilterAsync.class})
-	@BodyParser.Of(BodyParser.Json.class)
 	public static F.Promise<Result> enablePush(String os, String pushToken) {
 		if (BaasBoxLogger.isTraceEnabled()) BaasBoxLogger.trace("Method Start");
 		if(os==null) {
@@ -361,7 +360,6 @@ public class Push extends Controller {
 	}
 
 	@With ({UserCredentialWrapFilterAsync.class,ConnectToDBFilterAsync.class})
-	@BodyParser.Of(BodyParser.Json.class)
 	public static F.Promise<Result> disablePush(String pushToken) throws SqlInjectionException{
 		if (BaasBoxLogger.isTraceEnabled()) BaasBoxLogger.trace("Method Start");
 		if(pushToken==null) return F.Promise.pure(badRequest("pushToken value cannot be null"));

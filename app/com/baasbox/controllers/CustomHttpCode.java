@@ -54,8 +54,8 @@ public enum CustomHttpCode {
 			PUSH_SWITCH_EXCEPTION(50306,503,"Cannot switch, because settings for the selected mode are missing","error"),
 			
             // Yibby error codes
-//          RIDER_CANCELLED_ACTIVE(20097,200,"The ride has already been cancelled by the rider.", "ok"),
-//          DRIVER_CANCELLED_ACTIVE(20098,200,"The ride has already been cancelled by the driver.", "ok"),
+			RIDER_CANCELLED(20097,400,"The ride has already been cancelled by the rider.", "error"),
+			DRIVER_CANCELLED(20098,400,"The ride has already been cancelled by the driver.", "error"),
             NO_DRIVERS_ACTIVE(20099,200,"No drivers are currently available for this bid.", "ok"),
             
             ;

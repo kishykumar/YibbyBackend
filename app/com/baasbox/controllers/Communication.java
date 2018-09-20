@@ -39,6 +39,7 @@ import com.twilio.twiml.Dial;
 import com.twilio.twiml.Message;
 import com.twilio.twiml.MessagingResponse;
 import com.twilio.twiml.Number;
+import com.twilio.twiml.Reject;
 
 public class Communication extends Controller {
     
@@ -82,10 +83,17 @@ public class Communication extends Controller {
             return internalServerError();
         }
         
-        VoiceResponse voiceResponse = new VoiceResponse.Builder()
-                .dial(new Dial.Builder().number(new Number.Builder(outgoingNumber).build()).callerId(to).build())
-                .build();
-
+        VoiceResponse voiceResponse = null;
+        if (StringUtils.isEmpty(outgoingNumber)) {
+            Reject reject = new Reject.Builder().build();
+            voiceResponse = new VoiceResponse.Builder().reject(reject)
+                    .build();
+        } else {
+            voiceResponse = new VoiceResponse.Builder()
+                    .dial(new Dial.Builder().number(new Number.Builder(outgoingNumber).build()).callerId(to).build())
+                    .build();
+        }
+        
         response().setContentType("text/xml");
         
         String xmlStringResponse;
@@ -145,9 +153,14 @@ public class Communication extends Controller {
             return internalServerError();
         }
         
-        MessagingResponse messagingResponse = new MessagingResponse.Builder()
-                .message(new Message.Builder().body(new Body(smsBody)).from(to).to(outgoingNumber).build())
-                .build();
+        MessagingResponse messagingResponse = null;
+        if (StringUtils.isEmpty(outgoingNumber)) {
+            return badRequest("forwardSMS:: No phone number to redirect for from: " + from + " to: " + to);
+        } else {
+            messagingResponse = new MessagingResponse.Builder()
+                    .message(new Message.Builder().body(new Body(smsBody)).from(to).to(outgoingNumber).build())
+                    .build();
+        }
 
         response().setContentType("text/xml");
         
