@@ -79,6 +79,10 @@ import com.orientechnologies.orient.core.exception.OTransactionException;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 
 import play.api.templates.Html;
+import play.mvc.Http;
+import play.mvc.Result;
+import play.mvc.Http.Context;
+import play.mvc.Http.RequestBody;
 
 public class CaberService extends UserService {
 
@@ -182,7 +186,7 @@ public class CaberService extends UserService {
 	public static void sendEmailIdVerificationEmail(ODocument caber) {
 	    
 	    // Here is how we verify user's email: 
-	    // We send a randon code and hash to phone number in the url. 
+	    // We send a random code and hash to phone number in the url. 
 	    // The random code is used to lookup the user.
 	    // Comparing the phone number hash takes care of the verification part.  
 	    
@@ -344,8 +348,33 @@ public class CaberService extends UserService {
         caber.field(CaberDao.PAYMENT_CUSTOMER_ID_FIELD_NAME, merchantId);
 
         caber.save();
+
+        // send email to support on successful driver signup
+        sendEmailDriverSignup(profile);
+        return caber;
+	}
+
+	/**
+     * Send email to Yibby customer support on complete Driver signup
+     * @return
+     */
+    private static void sendEmailDriverSignup(CompleteDriverProfile profile) {
+
+    	//Get Driver details from Driver Profile
+    	DriverLicense driverLicense = profile.getDriverLicense();
+    	DriverPersonalDetails personalDetails = profile.getPersonal();
+    	
+    	//Send email with driver details once  driver documents are uploaded
+	    EmailBean emailBean = new EmailBean();
+	    String message = null;
+
+	    message = "Urgent: Driver " + driverLicense.getFirstName() + " " + driverLicense.getLastName() + "(" + personalDetails.getPhoneNumber() + ") uploaded documents.";
+	    emailBean.setBody(message);
+	    emailBean.setSubject("Urgent: Driver " + driverLicense.getFirstName() + " " + driverLicense.getLastName() + "(" + personalDetails.getPhoneNumber() + ") uploaded documents");
+    	emailBean.setTo(EmailService.YIBBY_SUPPORT_EMAIL_ID);
+    	emailBean.setFrom(EmailService.YIBBY_NOREPLY_EMAIL_ID);
         
-		return caber;
+    	EmailService.sendEmail(emailBean);
 	}
 	
 	private static void createNewVehicle(VehicleBean vehicle, ODocument caber) throws Throwable {
@@ -1053,6 +1082,7 @@ public class CaberService extends UserService {
     
     		caber.field(CaberDao.DRIVER_APPROVED_FIELD_NAME, true);
     		caber.save();
+    		CaberService.sendDriverApprovalEmail(caber);
     		return true;
 		}
 		
@@ -1066,6 +1096,36 @@ public class CaberService extends UserService {
 		return false;
 	}
 	
+	/**
+	 * Send email to driver after Yibby approves driver documents
+	 */
+	public static void sendDriverApprovalEmail(ODocument caber) {
+
+		// We send the driver an email on completing approval of driver uploaded documents
+
+		try {
+		    String name = (String)caber.field(CaberDao.NAME_FIELD_NAME);
+		    String caberEmailId = (String)caber.field(CaberDao.EMAIL_FIELD_NAME);
+
+		    EmailBean emailBean = new EmailBean();
+
+		    emailBean.setSubject("Congratulations! You have been approved: Yibby");
+		    emailBean.setFrom("no-reply@yibbyapp.com");
+		    emailBean.setTo(caberEmailId);
+
+		    String siteUrl = Application.NETWORK_HTTP_URL.getValueAsString();
+		    int sitePort = Application.NETWORK_HTTP_PORT.getValueAsInteger();
+
+		    Html emailHtml = views.html.email.driverapproval.render(name);
+		    emailBean.setBody(emailHtml.body());
+		    emailBean.setFrom(EmailService.YIBBY_NOREPLY_EMAIL_ID);
+
+		    EmailService.sendEmail(emailBean);
+	    } catch (Exception e) {
+	    	BaasBoxLogger.error("ERROR SENDING APPROVAL EMAIL:" + ExceptionUtils.getStackTrace(e));
+	    }
+	}
+
 	public static void updateDriverPaymentAccountStatus(String merchantId, PaymentAccountStatus status) 
 	        throws SqlInjectionException, InvalidModelException {
 	    
