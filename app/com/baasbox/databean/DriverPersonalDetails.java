@@ -22,6 +22,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
         "dob",
         "emailId",
         "phoneNumber",
+        "referralCode",
         "streetAddress",
         "city",
         "state",
@@ -39,6 +40,8 @@ public class DriverPersonalDetails {
     private String emailId;
     @JsonProperty("phoneNumber")
     private String phoneNumber;
+    @JsonProperty("referralCode")
+    private String referralCode;
     @JsonProperty("streetAddress")
     private String streetAddress;
     @JsonProperty("city")
@@ -98,7 +101,17 @@ public class DriverPersonalDetails {
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
     }
+    
+    @JsonProperty("referralCode")
+    public String getReferralCode() {
+        return referralCode;
+    }
 
+    @JsonProperty("referralCode")
+    public void setReferralCode(String referralCode) {
+        this.referralCode = referralCode;
+    }
+    
     @JsonProperty("streetAddress")
     public String getStreetAddress() {
         return streetAddress;

@@ -457,6 +457,7 @@ GET     /nearest_eta            				com.baasbox.controllers.LocationResource.get
 #email
 GET		/email/verify							com.baasbox.controllers.Caber.verifyEmail()
 POST	/email/support							com.baasbox.controllers.Email.sendEmailToSupport()
+POST	/email/signup							com.baasbox.controllers.Email.sendEmailForSignup()
 
 #calling/texting
 POST 	/call-tracking/forward-call				com.baasbox.controllers.Communication.forwardCall()

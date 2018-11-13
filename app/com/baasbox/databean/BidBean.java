@@ -11,6 +11,9 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 @JsonPropertyOrder({
 		"id",
         "bidPrice",
+        "bidRangeLowPrice",
+        "bidRangeHighPrice",
+        "bidSuggestedPrice",
         "pickupLat",
         "pickupLong",
         "pickupLoc",
@@ -29,6 +32,12 @@ public class BidBean {
     
     @JsonProperty("bidPrice")
     private Double bidPrice;
+    @JsonProperty("bidRangeLowPrice")
+    private Double bidRangeLowPrice;
+    @JsonProperty("bidRangeHighPrice")
+    private Double bidRangeHighPrice;
+    @JsonProperty("bidSuggestedPrice")
+    private Double bidSuggestedPrice;
     @JsonProperty("pickupLat")
     private Double pickupLat;
     @JsonProperty("pickupLong")
@@ -86,6 +95,66 @@ public class BidBean {
     @JsonProperty("bidPrice")
     public void setBidPrice(Double bidPrice) {
         this.bidPrice = bidPrice;
+    }
+
+   /**
+    *
+    * @return
+    * The bidRangeLowPrice
+    */
+    @JsonProperty("bidRangeLowPrice")
+    public Double getBidRangeLowPrice() {
+        return bidRangeLowPrice;
+    }
+    
+   /**
+    *
+    * @param bidRangeLowPrice
+    * The bidRangeLowPrice
+    */
+    @JsonProperty("bidRangeLowPrice")
+    public void setBidRangeLowPrice(Double bidRangeLowPrice) {
+        this.bidRangeLowPrice = bidRangeLowPrice;
+    }
+
+    /**
+    *
+    * @return
+    * The bidRangeHighPrice
+    */
+    @JsonProperty("bidRangeHighPrice")
+    public Double getBidRangeHighPrice() {
+        return bidRangeHighPrice;
+    }
+    
+   /**
+    *
+    * @param bidRangeHighPrice
+    * The bidRangeHighPrice
+    */
+    @JsonProperty("bidRangeHighPrice")
+    public void setBidRangeHighPrice(Double bidRangeHighPrice) {
+        this.bidRangeHighPrice = bidRangeHighPrice;
+    }
+
+    /**
+    *
+    * @return
+    * The bidSuggestedPrice
+    */
+    @JsonProperty("bidSuggestedPrice")
+    public Double getBidSuggestedPrice() {
+        return bidSuggestedPrice;
+    }
+    
+   /**
+    *
+    * @param bidSuggestedPrice
+    * The bidSuggestedPrice
+    */
+    @JsonProperty("bidSuggestedPrice")
+    public void setBidSuggestedPrice(Double bidSuggestedPrice) {
+        this.bidSuggestedPrice = bidSuggestedPrice;
     }
 
     /**

@@ -234,6 +234,14 @@ public class Caber extends Controller {
 		String type=(String)  bodyJson.findValuesAsText("type").get(0);
 		String email=(String) bodyJson.findValuesAsText("email").get(0);
 		
+		// Get the invite code
+		List<String> inviteCodeStrArr = bodyJson.findValuesAsText("inviteCode");
+		
+		String inviteCode = null;
+		if (inviteCodeStrArr != null && !inviteCodeStrArr.isEmpty()) { 
+		    inviteCode=(String)inviteCodeStrArr.get(0);
+		}
+		
 		if (privateAttributes == null) {
 		    ObjectMapper mapper = new ObjectMapper();
 		    ObjectNode jNode = mapper.createObjectNode();
@@ -256,7 +264,7 @@ public class Caber extends Controller {
 		//try to signup new user
 		ODocument profile = null;
 		try {
-			CaberService.signUp(type, name, email, phoneNumber, username, password, new Date(), 
+			CaberService.signUp(type, name, email, phoneNumber, username, password, inviteCode, new Date(), 
 			        nonAppUserAttributes, privateAttributes, friendsAttributes, appUsersAttributes, false);
 			
 			//due to issue 412, we have to reload the profile
@@ -1441,6 +1449,10 @@ public class Caber extends Controller {
 		String bidId = (String)ctx.request().getQueryString(QUERY_STRING_FIELD_BIDID);
 	    String type = (String)ctx.request().getQueryString("type");
 
+	    if (type == null) {
+	        return badRequest("Sync failed: Unspecified type.");
+	    }
+	    
 		if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("bidId in sync: " + bidId);
 		
 		ODocument caber = null;
@@ -1516,7 +1528,10 @@ public class Caber extends Controller {
         try {
             ODocument profileDoc = CaberService.getCurrentUser();
             String userType = profileDoc.field(CaberDao.USER_TYPE_NAME);
-            if (userType.equals(CaberDao.USER_TYPE_VALUE_DRIVER)) {
+            String username=DbHelper.currentUsername();
+            
+            if (username.equalsIgnoreCase(BBConfiguration.getInstance().getBaasBoxAdminUsername()) ||
+                userType.equals(CaberDao.USER_TYPE_VALUE_DRIVER)) {
                 
                 if (StringUtils.isEmpty(endDateStr))
                     return badRequest("Empty 'endDate' query string argument.");

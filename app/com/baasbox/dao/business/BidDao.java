@@ -48,7 +48,12 @@ public class BidDao extends NodeDao  {
 
 	public ODocument create(BidBean b) throws Throwable{
 		ODocument bid=super.create();
+		
 		bid.field(Bid.BID_PRICE_FIELD_NAME, b.getBidPrice());
+		bid.field(Bid.BID_RANGE_LOW_PRICE_FIELD_NAME, b.getBidRangeLowPrice());
+		bid.field(Bid.BID_RANGE_HIGH_PRICE_FIELD_NAME, b.getBidRangeHighPrice());
+		bid.field(Bid.BID_SUGGESTED_PRICE_FIELD_NAME, b.getBidSuggestedPrice());
+		
 		bid.field(Bid.PICKUP_LAT_FIELD_NAME, b.getPickupLat());
 		bid.field(Bid.PICKUP_LONG_FIELD_NAME, b.getPickupLong());
 		bid.field(Bid.PICKUP_LOC_FIELD_NAME, b.getPickupLoc());

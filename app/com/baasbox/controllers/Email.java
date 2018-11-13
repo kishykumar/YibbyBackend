@@ -72,12 +72,68 @@ public class Email extends Controller {
         
         EmailBean emailBean = new EmailBean();
         emailBean.setBody(message);
-        emailBean.setSubject("Urgent: Contact Us Form Enquiry. Reply to: " + _replyto);
+        emailBean.setSubject("Urgent: Contact Us Form Enquiry: Name: "+name+". Reply to: " + _replyto);
         emailBean.setTo(EmailService.YIBBY_SUPPORT_EMAIL_ID);
         emailBean.setFrom(EmailService.YIBBY_NOREPLY_EMAIL_ID);
         
         EmailService.sendEmail(emailBean);
         response().setHeader(Http.Response.ACCESS_CONTROL_ALLOW_ORIGIN, "http://yibbyapp.com");
+        return ok();
+    }
+	
+    public static Result sendEmailForSignup() {
+        if (BaasBoxLogger.isTraceEnabled()) BaasBoxLogger.trace("Method Start: sendEmailForSignup");
+        Http.RequestBody body = request().body();
+        if (body==null) return badRequest("missing data: is the body x-www-form-urlencoded or application/json? Detected: " + request().getHeader(CONTENT_TYPE));
+
+        Map<String, String[]> bodyUrlEncoded = body.asFormUrlEncoded();
+        if (bodyUrlEncoded == null){
+            return badRequest("missing bodyUrlEncoded");
+        }
+        
+        String name = null;
+        String email = null;
+        String invitecode = null;
+        String rider = null;
+        String driver = null;
+        
+        if(bodyUrlEncoded.get("name")==null) 
+            return badRequest("The 'name' field is missing");
+        else 
+            name=bodyUrlEncoded.get("name")[0];
+        
+        if(bodyUrlEncoded.get("email")==null) 
+            return badRequest("The 'email' field is missing");
+        else 
+            email=bodyUrlEncoded.get("email")[0];
+        
+        if(bodyUrlEncoded.get("invitecode")!=null)  
+            invitecode=bodyUrlEncoded.get("invitecode")[0];
+        
+        if(bodyUrlEncoded.get("rider")!=null)  
+            rider=bodyUrlEncoded.get("rider")[0];
+        
+        if(bodyUrlEncoded.get("driver")!=null)  
+            driver=bodyUrlEncoded.get("driver")[0];
+        
+        if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("name " + name);
+        if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("email " + email);
+        if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("invitecode " + invitecode);
+        if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("rider " + rider);
+        if (BaasBoxLogger.isDebugEnabled()) BaasBoxLogger.debug("driver " + driver);
+        
+        if (name == null || email == null || name.equalsIgnoreCase("") || email.equalsIgnoreCase(""))  {
+            return badRequest("Bad arguments in query string.");
+        }
+        
+        EmailBean emailBean = new EmailBean();
+        emailBean.setBody("InviteCode: " + invitecode + " rider: " + rider + " driver: " + driver);
+        emailBean.setSubject("New signup: Name: "+name+". Email: " + email);
+        emailBean.setTo(EmailService.YIBBY_SUPPORT_EMAIL_ID);
+        emailBean.setFrom(EmailService.YIBBY_NOREPLY_EMAIL_ID);
+        
+        EmailService.sendEmail(emailBean);
+        response().setHeader(Http.Response.ACCESS_CONTROL_ALLOW_ORIGIN, "https://yibbyapp.com");
         return ok();
     }
 }

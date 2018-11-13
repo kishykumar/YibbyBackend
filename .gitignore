@@ -29,3 +29,4 @@ server.pid
 conf/generated.keystore
 dump.rdb
 *.log
+*.jks

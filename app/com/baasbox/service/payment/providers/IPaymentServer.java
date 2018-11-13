@@ -39,14 +39,20 @@ public interface IPaymentServer {
     public List<CardPushBean> getPaymentMethods(String customerId) throws PaymentServerException;
 
     // Transaction Management 
-    public String createTransaction(String paymentMethodToken, BigDecimal amount, BigDecimal serviceFee, String merchantId, String descriptor, boolean temp) 
+    public String createTransaction(String paymentMethodToken, BigDecimal amount, 
+            BigDecimal serviceFee, String merchantId, String descriptor, boolean temp, String bidId) 
             throws PaymentServerException;
-    
     public void settleTransaction(String transactionId) throws PaymentServerException;
     public void voidTransaction(String transactionId) throws PaymentServerException;
-    public void releaseFromEscrow(String transactionId) throws PaymentServerException;
     
+    public boolean canSettleTransaction(String transactionId) throws PaymentServerException;
+
+    // TODO: Fix this
+    //public void releaseFromEscrow(String transactionId) throws PaymentServerException;
+    //public boolean canReleaseFromEscrow(String transactionId) throws PaymentServerException;
+    
+    // TODO: Fix this
     // Sub-merchant Management
-    public String createMerchant(CompleteDriverProfile profile) throws PaymentServerException;
-    public void updateMerchant(String merchantId, Funding funding) throws PaymentServerException;
+    //public String createMerchant(CompleteDriverProfile profile) throws PaymentServerException;
+    //public void updateMerchant(String merchantId, Funding funding) throws PaymentServerException;
 }

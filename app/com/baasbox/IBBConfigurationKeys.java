@@ -68,6 +68,8 @@ public interface IBBConfigurationKeys {
 	public static final String WEB_PATH = "web.path";
 	public static final String WEB_INDEX_FILES = "web.index_files";
 	
+	public static final String APPLICATION_SANDBOX = "application.sandbox";   
+
 	@Deprecated
 	public static final String REALM = "authorization.basic.realm";
 }

@@ -128,7 +128,7 @@ public class RideDao extends NodeDao  {
         
         // Transactions that are 2 days old are considered for settlement
         Date daysBeforeNow = new Date(curTime.getTime() - TimeUnit.DAYS.toMillis(2));
-
+        
         QueryParams criteria = 
                 QueryParams.getInstance()
                 .where(Ride.TRANSACTION_STATUS_FIELD_NAME + "=? and " + Ride.RIDE_DROPOFF_TIME_FIELD_NAME + " < ?")

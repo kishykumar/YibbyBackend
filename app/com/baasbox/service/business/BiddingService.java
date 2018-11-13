@@ -157,9 +157,17 @@ public class BiddingService {
 
             List<String> driverUsernames = new ArrayList<String>();
             try {
+                String bidId = (String)bidDoc.field(BaasBoxPrivateFields.ID.toString());
+                
+                // Create the list of all drivers
+                for(ODocument caber : drivers) {    
+                    String driverName = (String) ((ODocument)caber.field(CaberDao.USER_LINK)).field(CaberDao.USER_NAME);
+                    driverUsernames.add( driverName );
+                }
+                
                 // create a temporary payment authorization of $5 (today)
                 String transactionId = PaymentService.createTemporaryTransaction(bid.getPaymentMethodToken(), 
-                        PaymentService.DEFAULT_TEMP_TRANSACTION_CHARGE); // Earlier the temp charge used to be the bid amount-> bid.getBidPrice().toString());
+                        PaymentService.DEFAULT_TEMP_TRANSACTION_CHARGE, bidId); // Earlier the temp charge used to be the bid amount-> bid.getBidPrice().toString());
                 bidDoc.field(Bid.TEMP_TRANSACTION_ID_FIELD_NAME, transactionId);
 
                 // 1. save the list of drivers
@@ -167,15 +175,11 @@ public class BiddingService {
 
                 // push the Bid JSON to the drivers using push service
                 // 2. grant permissions on ODocument to all drivers
-                for(ODocument caber : drivers) {
-    
-                    String driverName = (String) ((ODocument)caber.field(CaberDao.USER_LINK)).field(CaberDao.USER_NAME);
-                    driverUsernames.add( driverName );
+                for(String driverUsername : driverUsernames) {
                     
                     // save the bidDoc and reload it because grantPermissionToDriver saves the doc internally
                     dao.save(bidDoc);
-                    BidService.grantPermissionToDriver((String)bidDoc.field(BaasBoxPrivateFields.ID.toString()), 
-                                                        Permissions.FULL_ACCESS, driverName);
+                    BidService.grantPermissionToDriver(bidId, Permissions.FULL_ACCESS, driverUsername);
                     bidDoc.reload();
                 }
         
@@ -282,6 +286,10 @@ public class BiddingService {
 
                     // send the rider the DRIVER_EN_ROUTE message with ride object
                     sendPushToUser(NO_OFFERS_PUSH_MESSAGE, riderUsername, bidPushBean);
+
+                    // payment service should void the temp transaction
+                    String authTransactionId = (String)myBidDoc.field(Bid.TEMP_TRANSACTION_ID_FIELD_NAME);
+                    PaymentService.onBidFailure(authTransactionId);
                     
                     // Update bid state
                     myBidDoc.field(BidConstants.KEY_STATE, BidConstants.VALUE_STATE_CLOSED_NO_OFFERS);
@@ -460,8 +468,13 @@ public class BiddingService {
     		                    bidDriverUsernames.add( driverName );
     		                }
 
+    		                // free up the drivers
     		                freeUpDriverForBidding(bidDriverUsernames);
 
+    		                // payment service should void the temp transaction
+    		                String authTransactionId = (String)myBidDoc.field(Bid.TEMP_TRANSACTION_ID_FIELD_NAME);
+    		                PaymentService.onBidFailure(authTransactionId);
+    		                
     	                    BidPushBean bidPushBean = new BidPushBean();
     	                    bidPushBean.setId((String)myBidDoc.field(BaasBoxPrivateFields.ID.toString()));
 
@@ -995,7 +1008,8 @@ public class BiddingService {
             rideDoc.reload();
             
             Integer rideDocCancelReason = (Integer)rideDoc.field(Ride.CANCEL_REASON);
-            
+            String bidId = (String)bidDoc.field(BaasBoxPrivateFields.ID.toString());
+
             // If the ride is already cancelled, then whatever operation the rider or driver is doing on the bid can't be completed
             // Non-zero cancel reason means ride has been cancelled
             if (rideDocCancelReason != null) {
@@ -1127,11 +1141,11 @@ public class BiddingService {
     
                     // Create the payment transaction
                     String paymentMethodToken = (String)bidDoc.field(Bid.PAYMENT_METHOD_TOKEN_FIELD_NAME);
-                    String driverMerchantId = (String)driverDoc.field(CaberDao.PAYMENT_CUSTOMER_ID_FIELD_NAME);
+                    String driverMerchantId = (String)driverDoc.field(CaberDao.PAYMENT_MERCHANT_ID_FIELD_NAME);
                     Double fare = (Double)bidDoc.field(Bid.BID_PRICE_FIELD_NAME);
                     
                     String fareTransactionId = PaymentService.createTransactionAtTripEnd(authTransactionId,
-                            paymentMethodToken, fare.toString(), driverMerchantId);
+                            paymentMethodToken, fare.toString(), driverMerchantId, bidId);
                     
                     rideDoc.field(Ride.FARE_TRANSACTION_ID_FIELD_NAME, fareTransactionId);
                     
@@ -1350,7 +1364,7 @@ public class BiddingService {
                             
                             // Apply tip if there
                             String paymentMethodToken = (String)bidDoc.field(Bid.PAYMENT_METHOD_TOKEN_FIELD_NAME);
-                            String driverMerchantId = (String)driverDoc.field(CaberDao.PAYMENT_CUSTOMER_ID_FIELD_NAME);
+                            String driverMerchantId = (String)driverDoc.field(CaberDao.PAYMENT_MERCHANT_ID_FIELD_NAME);
                             String fareTransactionId = (String)rideDoc.field(Ride.FARE_TRANSACTION_ID_FIELD_NAME);
                             Double fare = (Double)bidDoc.field(Bid.BID_PRICE_FIELD_NAME);
                             
@@ -1359,8 +1373,10 @@ public class BiddingService {
                             // Only create the tip transaction if it doesn't exist. 
                             // We can go through this entire code again on transaction retry.
                             if (tipTransactionId == null) {
+                                String bidId = (String)bidDoc.field(BaasBoxPrivateFields.ID.toString());
+
                                 tipTransactionId = PaymentService.createTransactionWithTip(fareTransactionId, paymentMethodToken, 
-                                        fare.toString(), tip.toString(), driverMerchantId);
+                                        fare.toString(), tip.toString(), driverMerchantId, bidId);
                             }
                             
                             rideDoc.field(Ride.TIP_TRANSACTION_ID_FIELD_NAME, tipTransactionId);

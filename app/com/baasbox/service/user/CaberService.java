@@ -5,9 +5,11 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 
 import org.apache.commons.codec.binary.Base64;
@@ -16,6 +18,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.mail.DefaultAuthenticator;
 import org.apache.commons.mail.EmailException;
 import org.apache.commons.mail.HtmlEmail;
+import org.junit.Test;
 import org.stringtemplate.v4.ST;
 
 import com.baasbox.BBConfiguration;
@@ -41,7 +44,6 @@ import com.baasbox.databean.DriverPersonalDetails;
 import com.baasbox.databean.DrivingDetails;
 import com.baasbox.databean.EmailBean;
 import com.baasbox.databean.EmergencyBean;
-import com.baasbox.databean.Funding;
 import com.baasbox.databean.Insurance;
 import com.baasbox.databean.LocationBean;
 import com.baasbox.databean.VehicleBean;
@@ -51,7 +53,6 @@ import com.baasbox.enumerations.DefaultRoles;
 import com.baasbox.exception.DriverNotFoundException;
 import com.baasbox.exception.IllegalRequestException;
 import com.baasbox.exception.InvalidJsonException;
-import com.baasbox.exception.InvalidStateException;
 import com.baasbox.exception.PasswordRecoveryException;
 import com.baasbox.exception.PaymentServerException;
 import com.baasbox.exception.UserNotFoundException;
@@ -73,9 +74,9 @@ import com.baasbox.service.payment.providers.BraintreeServer.PaymentAccountStatu
 import com.baasbox.service.stats.StatsManager;
 import com.baasbox.service.storage.BaasBoxPrivateFields;
 import com.baasbox.service.storage.FileService;
+import com.baasbox.util.Util;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.orientechnologies.common.concur.ONeedRetryException;
-import com.orientechnologies.orient.core.exception.OTransactionException;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 
 import play.api.templates.Html;
@@ -128,6 +129,8 @@ public class CaberService extends UserService {
 	 * @throws UserAlreadyExistsException
 	 * @throws EmailAlreadyUsedException
 	 * @throws PaymentServerException  
+	 * @throws InvalidModelException 
+	 * @throws SqlInjectionException 
 	 */
 	public static ODocument  signUp (
 		String type,
@@ -136,12 +139,15 @@ public class CaberService extends UserService {
 		String phoneNumber,
 		String username,
 		String password,
+		String inviteCode,
 		Date signupDate,
 		JsonNode nonAppUserAttributes,
 		JsonNode privateAttributes,
 		JsonNode friendsAttributes,
 		JsonNode appUsersAttributes,
-		boolean generated) throws InvalidJsonException, UserAlreadyExistsException, EmailAlreadyUsedException, PaymentServerException {
+		boolean generated) throws InvalidJsonException, UserAlreadyExistsException, 
+	                              EmailAlreadyUsedException, PaymentServerException, 
+	                              SqlInjectionException, InvalidModelException {
 	    
 		if ((type != null) && !type.isEmpty()) {
 			String typeValue = type.toLowerCase().startsWith("d") ? CaberDao.USER_TYPE_VALUE_DRIVER 
@@ -152,21 +158,31 @@ public class CaberService extends UserService {
 			ODocument profile= signUp(username, password,null, nonAppUserAttributes, privateAttributes, friendsAttributes, appUsersAttributes,false);
 			profile.field(CaberDao.USER_TYPE_NAME, typeValue);
 			profile.field(CaberDao.PHONE_NUMBER_FIELD_NAME, phoneNumber);
+			profile.field(CaberDao.INVITE_CODE_FIELD_NAME, inviteCode);
+			
+			profile.field(CaberDao.REFERRAL_CODE_FIELD_NAME, generateReferralCode());
+			
+			// reset email fields
 			profile.field(CaberDao.EMAIL_FIELD_NAME, email);
+			profile.field(CaberDao.EMAIL_VERIFIED_FIELD_NAME, false);
+			
 			profile.field(CaberDao.NAME_FIELD_NAME, name);
 			profile.field(CaberDao.USER_RATING_FIELD_NAME, 0.0);
 			profile.field(CaberDao.NUM_RATINGS_FIELD_NAME, 0);
 			
+			// reset payment fields
+			profile.field(CaberDao.PAYMENT_MERCHANT_ID_FIELD_NAME, "");
+            profile.field(CaberDao.PAYMENT_MERCHANT_APPROVED_FIELD_NAME, false);
+            
 			if (typeValue == CaberDao.USER_TYPE_VALUE_DRIVER) {
 				profile.field(CaberDao.DRIVER_APPROVED_FIELD_NAME, false);
-				profile.field(CaberDao.PAYMENT_ACCOUNT_APPROVED_FIELD_NAME, PaymentAccountStatus.INPROCESS);
+				profile.field(CaberDao.PAYMENT_MERCHANT_APPROVED_FIELD_NAME, PaymentAccountStatus.INPROCESS);
 				profile.field(CaberDao.DRIVER_DETAILS_SUBMITTED_FIELD_NAME, false);
-			} else {
-			    
-			    // Create the Payment Server Customer for this rider
-    			String paymentCustomerId = PaymentService.createCustomer(name, name, email, phoneNumber);
-    			profile.field(CaberDao.PAYMENT_CUSTOMER_ID_FIELD_NAME, paymentCustomerId);
 			}
+
+		    // Create the PaymentService customer for this user
+			String paymentCustomerId = PaymentService.createCustomer(name, name, email, phoneNumber);
+			profile.field(CaberDao.PAYMENT_CUSTOMER_ID_FIELD_NAME, paymentCustomerId);
 			
 			// Send email for verification
 			CaberService.sendEmailIdVerificationEmail(profile);
@@ -201,7 +217,7 @@ public class CaberService extends UserService {
 	    String phoneNumber = (String)caber.field(CaberDao.PHONE_NUMBER_FIELD_NAME);
 	    String saltedPhoneNumber = EMAIL_VERIFICATION_SALT + phoneNumber;
 	    
-	    String encryptedPhoneNumber = encrypt(saltedPhoneNumber);
+	    String encryptedPhoneNumber = Util.encrypt(saltedPhoneNumber);
 	    
 	    String urlEncodedEncryptedPhoneNumber = null;
         try {
@@ -243,9 +259,13 @@ public class CaberService extends UserService {
     	    for (ODocument caber: cabersList) {
     	        String phoneNumber = (String)caber.field(CaberDao.PHONE_NUMBER_FIELD_NAME);
     	        String saltedPhoneNumber = EMAIL_VERIFICATION_SALT + phoneNumber;
-    	        String computedHash = encrypt(saltedPhoneNumber);
+    	        String computedHash = Util.encrypt(saltedPhoneNumber);
     	        
     	        if (computedHash.equals(hash)) {
+    	            
+    	            caber.field(CaberDao.EMAIL_VERIFIED_FIELD_NAME, true);
+    	            caber.save();
+    	            
     	            return true;
     	        }
     	    }
@@ -254,18 +274,18 @@ public class CaberService extends UserService {
 	    return false; 
 	}
 
-	private static String encrypt(String generatedKey)
-    {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA");
-            md.update(generatedKey.getBytes("UTF-8"));
-            byte digest[] = md.digest();
-            return (new String(Base64.encodeBase64(digest)));
-        }
-        catch (Exception e) {
-            return null;
-        }
-    }
+	private static String generateReferralCode() throws SqlInjectionException, InvalidModelException {
+	    CaberDao dao = CaberDao.getInstance();
+	    String referralCode = Util.createRandomCode();
+	    List<ODocument> collision = dao.getCaberWithReferralCode(referralCode);
+	    
+	    while (collision != null) {
+	        referralCode = Util.createRandomCode();
+	        collision = dao.getCaberWithReferralCode(referralCode);
+	    }
+	    
+	    return referralCode;
+	}
 	
 	public static ODocument completeDriverSignUp(CompleteDriverProfile profile) throws Throwable {
 
@@ -337,11 +357,12 @@ public class CaberService extends UserService {
 				
 		caber.field(CaberDao.DRIVER_DETAILS_SUBMITTED_FIELD_NAME, true);
 
+		// TODO: Fix this 
 		// If create merchant throws an exception today (say a network issue), 
 		// then caber fields won't be saved in the db because caber.save() 
 		// persists it. 
-		String merchantId = PaymentService.createMerchant(profile);
-        caber.field(CaberDao.PAYMENT_CUSTOMER_ID_FIELD_NAME, merchantId);
+		//String merchantId = PaymentService.createMerchant(profile);
+        //caber.field(CaberDao.PAYMENT_CUSTOMER_ID_FIELD_NAME, merchantId);
 
         caber.save();
         
@@ -364,12 +385,12 @@ public class CaberService extends UserService {
             throws Throwable {
         
         ODocument caber = UserService.getCurrentUser();
-        String merchantId = (String)caber.field(CaberDao.PAYMENT_CUSTOMER_ID_FIELD_NAME);
         
-        // Merchant id should not be null because completeDriverSignup should have already created a payment merchant. 
-        if (merchantId == null) {
-            throw new InvalidStateException(); 
-        }
+//        String merchantId = (String)caber.field(CaberDao.PAYMENT_MERCHANT_ID_FIELD_NAME);
+//        // Merchant id should not be null because completeDriverSignup should have already created a payment merchant. 
+//        if (merchantId == null) {
+//            throw new InvalidStateException(); 
+//        }
         
         VehicleBean vehicle = incomingProfile.getVehicle();
         if (vehicle != null)
@@ -390,9 +411,10 @@ public class CaberService extends UserService {
             if (profilePictureFile != null)
                 PermissionsHelper.grantRead(profilePictureFile, RoleDao.getRole(DefaultRoles.REGISTERED_USER.toString()));
 
+            // TODO: Fix this
             // Update Payment Service with latest funding details
-            if (existingProfile.getFunding() != null)
-                PaymentService.updateMerchant(merchantId, existingProfile.getFunding());
+//            if (existingProfile.getFunding() != null)
+//                PaymentService.updateMerchant(merchantId, existingProfile.getFunding());
 
             // Save the merged profile
             String encryptedString = CompleteDriverProfile.getEncryptedString(existingProfile);
@@ -495,11 +517,12 @@ public class CaberService extends UserService {
                     caber.field(CaberDao.DRIVER_ADDRESS_POSTAL_CODE_FIELD_NAME, personal.getPostalCode());
             }
             
-            Funding funding = incomingProfile.getFunding();
+            // TODO: Fix this
             // Only allowed to update bank account/routing number
-            if (funding != null) {
-                PaymentService.updateMerchant(merchantId, funding);
-            }
+//            Funding funding = incomingProfile.getFunding();
+//            if (funding != null) {
+//                PaymentService.updateMerchant(merchantId, funding);
+//            }
         }
         
         caber.save();
@@ -571,6 +594,7 @@ public class CaberService extends UserService {
 	    profileBean.setName((String)profileDoc.field(CaberDao.NAME_FIELD_NAME));
 	    profileBean.setPhoneNumber((String)profileDoc.field(CaberDao.PHONE_NUMBER_FIELD_NAME));
 	    profileBean.setEmail((String)profileDoc.field(CaberDao.EMAIL_FIELD_NAME));
+	    profileBean.setReferralCode((String)profileDoc.field(CaberDao.REFERRAL_CODE_FIELD_NAME));
 	    
 	    ODocument profilePictureDoc = profileDoc.field(CaberDao.PROFILE_PICTURE_FIELD_NAME);
 	    if (profilePictureDoc != null) {
@@ -613,6 +637,9 @@ public class CaberService extends UserService {
                     profileBean.setInsurance(profile.getInsurance());
                     profileBean.setPersonal(profile.getPersonal());
                     profileBean.setVehicle(profile.getVehicle());
+                    
+                    // Set the referral code explicitly
+                    profileBean.getPersonal().setReferralCode(profileDoc.field(CaberDao.REFERRAL_CODE_FIELD_NAME));
                 }
             }
             
@@ -628,9 +655,11 @@ public class CaberService extends UserService {
 
                 personal.setPhoneNumber((String)profileDoc.field(CaberDao.PHONE_NUMBER_FIELD_NAME));
                 personal.setEmailId((String)profileDoc.field(CaberDao.EMAIL_FIELD_NAME));
+                personal.setReferralCode(profileDoc.field(CaberDao.REFERRAL_CODE_FIELD_NAME));
             }
             
         } else {
+            
             DriverPersonalDetails personal = new DriverPersonalDetails();
             DriverLicense driverLicense = new DriverLicense();
             Insurance insurance = new Insurance(); 
@@ -645,6 +674,7 @@ public class CaberService extends UserService {
             personal.setPostalCode(profileDoc.field(CaberDao.DRIVER_ADDRESS_POSTAL_CODE_FIELD_NAME));
             personal.setEmailId(profileDoc.field(CaberDao.EMAIL_FIELD_NAME));
             personal.setPhoneNumber(profileDoc.field(CaberDao.PHONE_NUMBER_FIELD_NAME));
+            personal.setReferralCode(profileDoc.field(CaberDao.REFERRAL_CODE_FIELD_NAME));
             personal.setDob(profileDoc.field(CaberDao.DRIVER_DOB_FIELD_NAME));
 
             ODocument profilePictureDoc = profileDoc.field(CaberDao.PROFILE_PICTURE_FIELD_NAME);
@@ -1049,8 +1079,9 @@ public class CaberService extends UserService {
     			throw new DriverNotFoundException();
     		}
     		
-    		String paymentAccountApproved = caber.field(CaberDao.PAYMENT_ACCOUNT_APPROVED_FIELD_NAME);
-    
+    		// TODO: Need to decide if driver can be approved without having the payment account approved
+    		String paymentAccountApproved = caber.field(CaberDao.PAYMENT_MERCHANT_APPROVED_FIELD_NAME);
+
     		caber.field(CaberDao.DRIVER_APPROVED_FIELD_NAME, true);
     		caber.save();
     		return true;
@@ -1077,7 +1108,7 @@ public class CaberService extends UserService {
 	        return;
 	    }
 	    
-	    caber.field(CaberDao.PAYMENT_ACCOUNT_APPROVED_FIELD_NAME, status.getDescription());
+	    caber.field(CaberDao.PAYMENT_MERCHANT_APPROVED_FIELD_NAME, status.getDescription());
 	    caber.save();
 	}
 	

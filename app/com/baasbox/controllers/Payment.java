@@ -227,10 +227,12 @@ public class Payment extends Controller {
         if (bodyUrlEncoded != null) {
             
             if (bodyUrlEncoded.get("merchantId") != null) {
+                
                 String merchantId = bodyUrlEncoded.get("merchantId")[0];
                 HashMap<String, String> sampleNotification = BraintreeServer.getTestNotification(merchantId);
                 btSignature = sampleNotification.get("bt_signature");
                 btPayload = sampleNotification.get("bt_payload");
+                
             } else {
             
                 if(bodyUrlEncoded.get("bt_signature") == null) {

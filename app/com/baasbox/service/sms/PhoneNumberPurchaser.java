@@ -18,6 +18,7 @@
 
 package com.baasbox.service.sms;
 
+import com.baasbox.BBConfiguration;
 import com.baasbox.configuration.Push;
 import com.twilio.base.ResourceSet;
 import com.twilio.http.TwilioRestClient;
@@ -70,7 +71,7 @@ public class PhoneNumberPurchaser {
     private PhoneNumber createBuyNumber(PhoneNumber phoneNumber) {
         
         // Don't buy more phone numbers in Sandbox
-        if (Push.PROFILE2_PUSH_SANDBOX_ENABLE.getValueAsBoolean()) {
+        if (BBConfiguration.getInstance().getAppSandbox()) {
             return null;
         } else {
             return new IncomingPhoneNumberCreator(phoneNumber)

@@ -6,6 +6,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import org.apache.commons.lang.StringUtils;
+
+import com.baasbox.BBConfiguration;
+import com.baasbox.configuration.Application;
 import com.baasbox.dao.exception.InvalidModelException;
 import com.baasbox.dao.exception.SqlInjectionException;
 import com.baasbox.databean.CompleteDriverProfile;
@@ -19,7 +23,7 @@ import com.baasbox.service.logging.BaasBoxLogger;
 import com.baasbox.service.payment.PaymentService;
 import com.baasbox.service.payment.providers.PaymentFactory.ConfigurationKeys;
 import com.baasbox.service.user.CaberService;
-import com.baasbox.util.USStatesUtil;
+import com.braintreegateway.Address;
 import com.braintreegateway.BraintreeGateway;
 import com.braintreegateway.ClientTokenRequest;
 import com.braintreegateway.CreditCard;
@@ -59,34 +63,40 @@ public class BraintreeServer extends PaymentProviderAbstract {
         
         public String getDescription() { return description; }
     }
-    
-    static {
-        if (PaymentService.isSandbox) {
-            config = ImmutableMap.of(
-                    ConfigurationKeys.BRAINTREE_ENVIRONMENT, "" + Environment.SANDBOX,
-                    ConfigurationKeys.BRAINTREE_MERCHANT_ID, "np2cr5rygpbcrygw",
-                    ConfigurationKeys.BRAINTREE_PUBLIC_KEY, "6v5tgfjpnmrk93cf",
-                    ConfigurationKeys.BRAINTREE_PRIVATE_KEY, "92e9cd6e06411031ef10ad60f74216b0",
-                    ConfigurationKeys.BRAINTREE_MASTER_MERCHANT_ACCOUNT_ID, "yibby"
-                    );
-        } else {
-            // production keys should be put here
-        }
-    }
-    
+        
     public static BraintreeGateway gateway;
-    private static BraintreeServer myInstance = new BraintreeServer(config);
+    private static BraintreeServer myInstance = new BraintreeServer();
     
     public static BraintreeServer getInstance() {
         return myInstance;
     }
 
-	BraintreeServer(ImmutableMap<PaymentFactory.ConfigurationKeys,String> configuration) {
+	BraintreeServer() {
+        
+	    if (BBConfiguration.getInstance().getAppSandbox()) {
+            config = ImmutableMap.of(
+                    ConfigurationKeys.BRAINTREE_ENVIRONMENT, "" + Environment.SANDBOX,
+                    ConfigurationKeys.BRAINTREE_MERCHANT_ID, "np2cr5rygpbcrygw",
+                    ConfigurationKeys.BRAINTREE_PUBLIC_KEY, "6v5tgfjpnmrk93cf",
+                    ConfigurationKeys.BRAINTREE_PRIVATE_KEY, "92e9cd6e06411031ef10ad60f74216b0",
+                    ConfigurationKeys.BRAINTREE_MASTER_MERCHANT_ACCOUNT_ID, "yibbyUSD"
+                    );
+        } else {
+            // production keys should be put here
+            config = ImmutableMap.of(
+                    ConfigurationKeys.BRAINTREE_ENVIRONMENT, "" + Environment.PRODUCTION,
+                    ConfigurationKeys.BRAINTREE_MERCHANT_ID, "bxzfdvxntxddw2jp",
+                    ConfigurationKeys.BRAINTREE_PUBLIC_KEY, "vpg8f2cr27jsg6j4",
+                    ConfigurationKeys.BRAINTREE_PRIVATE_KEY, "11128ec93d98a187afb1de201a91d985",
+                    ConfigurationKeys.BRAINTREE_MASTER_MERCHANT_ACCOUNT_ID, "yibbyUSD"
+                    );
+        }
+        
         gateway = new BraintreeGateway(
-                configuration.get(ConfigurationKeys.BRAINTREE_ENVIRONMENT),
-                configuration.get(ConfigurationKeys.BRAINTREE_MERCHANT_ID),
-                configuration.get(ConfigurationKeys.BRAINTREE_PUBLIC_KEY),
-                configuration.get(ConfigurationKeys.BRAINTREE_PRIVATE_KEY)
+                config.get(ConfigurationKeys.BRAINTREE_ENVIRONMENT),
+                config.get(ConfigurationKeys.BRAINTREE_MERCHANT_ID),
+                config.get(ConfigurationKeys.BRAINTREE_PUBLIC_KEY),
+                config.get(ConfigurationKeys.BRAINTREE_PRIVATE_KEY)
               );
 	}
 
@@ -114,7 +124,12 @@ public class BraintreeServer extends PaymentProviderAbstract {
                 
                 return customerId;
             } else {
-                BaasBoxLogger.error("Error Message in Braintree createCustomer: " + result.getMessage());
+
+                if (result.getErrors().getAllDeepValidationErrors().size() > 0) {
+                    for (ValidationError error : result.getErrors().getAllDeepValidationErrors()) {
+                        BaasBoxLogger.debug("Error! Message in Braintree createCustomer: " + error.getMessage()); 
+                    }
+                }
                 throw new PaymentServerException(result.getMessage());
             }
     	} catch (NotFoundException e) {
@@ -136,7 +151,11 @@ public class BraintreeServer extends PaymentProviderAbstract {
                 
                 return;
             } else {
-                BaasBoxLogger.error("Error Message in Braintree deletePaymentMethod: " + result.getMessage());
+                if (result.getErrors().getAllDeepValidationErrors().size() > 0) {
+                    for (ValidationError error : result.getErrors().getAllDeepValidationErrors()) {
+                        BaasBoxLogger.debug("Error! Message in Braintree deletePaymentMethod: " + error.getMessage()); 
+                    }
+                }
                 throw new PaymentServerException(result.getMessage());
             }
         } catch (NotFoundException e) {
@@ -172,7 +191,11 @@ public class BraintreeServer extends PaymentProviderAbstract {
                 }
                 return null;
             } else {
-                BaasBoxLogger.error("Error Message in Braintree updatePaymentMethod: " + result.getMessage());
+                if (result.getErrors().getAllDeepValidationErrors().size() > 0) {
+                    for (ValidationError error : result.getErrors().getAllDeepValidationErrors()) {
+                        BaasBoxLogger.debug("Error! Message in Braintree updatePaymentMethod: " + error.getMessage()); 
+                    }
+                }
                 throw new PaymentServerException(result.getMessage());
             }
         } catch (NotFoundException e) {
@@ -187,7 +210,12 @@ public class BraintreeServer extends PaymentProviderAbstract {
 	public CardPushBean makeDefaultPaymentMethod(String paymentMethodToken) throws PaymentServerException {
 	    
 	    try {
-	        PaymentMethodRequest makeDefaultRequest = new PaymentMethodRequest().options().makeDefault(true).done();
+	        PaymentMethodRequest makeDefaultRequest = new PaymentMethodRequest()
+	                                                        .options()
+	                                                            .makeDefault(true)
+	                                                            .verifyCard(false)
+	                                                            .done();
+	        
 	        Result<? extends PaymentMethod> result = gateway.paymentMethod().update(paymentMethodToken, makeDefaultRequest);
 	        if (result.isSuccess()) {
 	            PaymentMethod paymentMethod = result.getTarget();
@@ -201,8 +229,12 @@ public class BraintreeServer extends PaymentProviderAbstract {
 	            }
 	            return null;
 	        } else {
-	            BaasBoxLogger.error("Error Message in Braintree makeDefaultPaymentMethod: " + result.getMessage());
-	            throw new PaymentServerException(result.getMessage());
+                if (result.getErrors().getAllDeepValidationErrors().size() > 0) {
+                    for (ValidationError error : result.getErrors().getAllDeepValidationErrors()) {
+                        BaasBoxLogger.debug("Error! Message in Braintree makeDefaultPaymentMethod: " + error.getMessage()); 
+                    }
+                }
+                throw new PaymentServerException(result.getMessage());
 	        }
         } catch (NotFoundException e) {
             throw new PaymentServerException("Payment Method Token not found.");
@@ -220,6 +252,7 @@ public class BraintreeServer extends PaymentProviderAbstract {
                    .paymentMethodNonce(nonceFromTheClient)
                    .options()
                        .verifyCard(true)
+                       //.failOnDuplicatePaymentMethod(true)
                    .done();
            
     	    Result<? extends PaymentMethod> result = gateway.paymentMethod().create(request);
@@ -229,14 +262,18 @@ public class BraintreeServer extends PaymentProviderAbstract {
     	        if (paymentMethod instanceof CreditCard) {
                     CreditCard card = (CreditCard) paymentMethod;
                     
-                    BaasBoxLogger.debug("BraintreeServer: Credit Card added to customer: " + 
+                    BaasBoxLogger.debug("BraintreeServer:: Credit Card added to customer: " + 
                                         customerId + ", token: " + card.getToken());
                     
                     return getBeanFromCreditCard(card);
     	        }
     	        return null;
     	    } else {
-    	        BaasBoxLogger.error("Error Message in Braintree addPaymentMethod: " + result.getMessage());
+    	        if (result.getErrors().getAllDeepValidationErrors().size() > 0) {
+    	            for (ValidationError error : result.getErrors().getAllDeepValidationErrors()) {
+    	                BaasBoxLogger.debug("Error! Message in Braintree addPaymentMethod: " + error.getMessage()); 
+    	            }
+    	        }
     	        throw new PaymentServerException(result.getMessage());
     	    }
         } catch (NotFoundException e) {
@@ -273,12 +310,30 @@ public class BraintreeServer extends PaymentProviderAbstract {
     
     private CardPushBean getBeanFromCreditCard(CreditCard card) {
         
+        if (card == null) {
+            return null;
+        }
+        
         CardPushBean cpb = new CardPushBean();
         
         cpb.setLast4(card.getLast4());
-        cpb.setPostalCode(Integer.valueOf(card.getBillingAddress().getPostalCode()));
-        cpb.setExpirationMonth(Integer.valueOf(card.getExpirationMonth()));
-        cpb.setExpirationYear(Integer.valueOf(card.getExpirationYear()));
+        
+        Address addr = card.getBillingAddress();
+        if (addr != null) {
+            String postalCode = addr.getPostalCode();
+            if (StringUtils.isNotEmpty(postalCode)) {
+                cpb.setPostalCode(Integer.valueOf(postalCode));
+            }
+        }
+        
+        if (StringUtils.isNotEmpty(card.getExpirationMonth())) {
+            cpb.setExpirationMonth(Integer.valueOf(card.getExpirationMonth()));
+        }
+        
+        if (StringUtils.isNotEmpty(card.getExpirationYear())) {
+            cpb.setExpirationYear(Integer.valueOf(card.getExpirationYear()));
+        }
+        
         cpb.setToken(card.getToken());
         cpb.setIsDefault(card.isDefault());
         cpb.setType(card.getCardType());
@@ -286,94 +341,96 @@ public class BraintreeServer extends PaymentProviderAbstract {
         return cpb;
     }
 
-    @Override
-    public String createMerchant(CompleteDriverProfile profile) throws PaymentServerException {
-        try {    
-            DriverLicense driverLicense = profile.getDriverLicense();
-            DriverPersonalDetails personal = profile.getPersonal();
-            Funding funding = profile.getFunding();
-    
-            if (funding.getAccountNumber() == null || funding.getRoutingNumber() == null) {
-                throw new PaymentServerException("Sub-merchant funding details not provided.");
-            }
-            
-            MerchantAccountRequest request = new MerchantAccountRequest().
-                    individual().
-                        firstName(driverLicense.getFirstName()).
-                        lastName(driverLicense.getLastName()).
-                        email(personal.getEmailId()).
-                        phone(personal.getPhoneNumber()).
-                        dateOfBirth(personal.getDob()).
-                        ssn(personal.getSsn()).
-                        address().
-                            streetAddress(personal.getStreetAddress()).
-                            locality(personal.getCity()).
-                            region(USStatesUtil.getCodeFromStateName(personal.getState())).
-                            postalCode(personal.getPostalCode()).
-                            done().
-                        done().
-                    funding().
-                        destination(MerchantAccount.FundingDestination.BANK).
-                        accountNumber(funding.getAccountNumber()).
-                        routingNumber(funding.getRoutingNumber()).
-                        done().
-                    tosAccepted(true).
-                    masterMerchantAccountId(config.get(ConfigurationKeys.BRAINTREE_MASTER_MERCHANT_ACCOUNT_ID));
-    
-            Result<MerchantAccount> result = gateway.merchantAccount().create(request);
-            
-            if (result.isSuccess()) {
-                MerchantAccount merchant = result.getTarget();
-                
-                if (merchant.getStatus() != MerchantAccount.Status.PENDING) {
-                    BaasBoxLogger.error("Error in Braintree createMerchant: sub-merchant status is not pending");
-                    throw new PaymentServerException("Sub-merchant status is not pending");
-                }
-    
-                String merchantId = merchant.getId();
-                BaasBoxLogger.debug("BraintreeServer: Merchant Created: " + merchantId);
-                
-                return merchantId;
-            } else {
-                BaasBoxLogger.error("Error Message in Braintree createMerchant: " + result.getMessage());
-                throw new PaymentServerException(result.getMessage());
-            }
-        } catch (NotFoundException e) {
-            throw new PaymentServerException("Payment Method Token not found.");
-        } catch (ServerException | UnexpectedException | TooManyRequestsException e) {
-            BaasBoxLogger.error("ERROR!! BraintreeServer::createMerchant: ", e);
-            throw new PaymentServerException("Payment Server Internal Error.");
-        }
-    }
-    
-    @Override
-    public void updateMerchant(String merchantId, Funding funding) throws PaymentServerException {
-        try {
-            MerchantAccountRequest request = new MerchantAccountRequest().
-                    funding().
-                        destination(MerchantAccount.FundingDestination.BANK).
-                        accountNumber(funding.getAccountNumber()).
-                        routingNumber(funding.getRoutingNumber()).
-                        done();
-        
-            Result<MerchantAccount> result = gateway.merchantAccount().update(merchantId, request);
-    
-            if (!result.isSuccess()) {
-                BaasBoxLogger.error("Error Message in Braintree createMerchant: " + result.getMessage());
-                throw new PaymentServerException(result.getMessage());
-            }
-            
-            BaasBoxLogger.debug("BraintreeServer: Merchant updated: " + merchantId);
-        } catch (NotFoundException e) {
-            throw new PaymentServerException("Payment Method Token not found.");
-        } catch (ServerException | UnexpectedException | TooManyRequestsException e) {
-            BaasBoxLogger.error("ERROR!! BraintreeServer::updateMerchant: ", e);
-            throw new PaymentServerException("Payment Server Internal Error.");
-        }
-    }
+// TODO: Fix this
+//    @Override
+//    public String createMerchant(CompleteDriverProfile profile) throws PaymentServerException {
+//        try {    
+//            DriverLicense driverLicense = profile.getDriverLicense();
+//            DriverPersonalDetails personal = profile.getPersonal();
+//            Funding funding = profile.getFunding();
+//    
+//            if (funding.getAccountNumber() == null || funding.getRoutingNumber() == null) {
+//                throw new PaymentServerException("Sub-merchant funding details not provided.");
+//            }
+//            
+//            MerchantAccountRequest request = new MerchantAccountRequest().
+//                    individual().
+//                        firstName(driverLicense.getFirstName()).
+//                        lastName(driverLicense.getLastName()).
+//                        email(personal.getEmailId()).
+//                        phone(personal.getPhoneNumber()).
+//                        dateOfBirth(personal.getDob()).
+//                        ssn(personal.getSsn()).
+//                        address().
+//                            streetAddress(personal.getStreetAddress()).
+//                            locality(personal.getCity()).
+//                            region(USStatesUtil.getCodeFromStateName(personal.getState())).
+//                            postalCode(personal.getPostalCode()).
+//                            done().
+//                        done().
+//                    funding().
+//                        destination(MerchantAccount.FundingDestination.BANK).
+//                        accountNumber(funding.getAccountNumber()).
+//                        routingNumber(funding.getRoutingNumber()).
+//                        done().
+//                    tosAccepted(true).
+//                    masterMerchantAccountId(config.get(ConfigurationKeys.BRAINTREE_MASTER_MERCHANT_ACCOUNT_ID));
+//    
+//            Result<MerchantAccount> result = gateway.merchantAccount().create(request);
+//            
+//            if (result.isSuccess()) {
+//                MerchantAccount merchant = result.getTarget();
+//                
+//                if (merchant.getStatus() != MerchantAccount.Status.PENDING) {
+//                    BaasBoxLogger.error("Error in Braintree createMerchant: sub-merchant status is not pending");
+//                    throw new PaymentServerException("Sub-merchant status is not pending");
+//                }
+//    
+//                String merchantId = merchant.getId();
+//                BaasBoxLogger.debug("BraintreeServer:: Merchant Created: " + merchantId);
+//                
+//                return merchantId;
+//            } else {
+//                BaasBoxLogger.error("Error Message in Braintree createMerchant: " + result.getMessage());
+//                throw new PaymentServerException(result.getMessage());
+//            }
+//        } catch (NotFoundException e) {
+//            throw new PaymentServerException("Payment Method Token not found.");
+//        } catch (ServerException | UnexpectedException | TooManyRequestsException e) {
+//            BaasBoxLogger.error("ERROR!! BraintreeServer::createMerchant: ", e);
+//            throw new PaymentServerException("Payment Server Internal Error.");
+//        }
+//    }
+//    
+//    @Override
+//    public void updateMerchant(String merchantId, Funding funding) throws PaymentServerException {
+//        try {
+//            MerchantAccountRequest request = new MerchantAccountRequest().
+//                    funding().
+//                        destination(MerchantAccount.FundingDestination.BANK).
+//                        accountNumber(funding.getAccountNumber()).
+//                        routingNumber(funding.getRoutingNumber()).
+//                        done();
+//        
+//            Result<MerchantAccount> result = gateway.merchantAccount().update(merchantId, request);
+//    
+//            if (!result.isSuccess()) {
+//                BaasBoxLogger.error("Error Message in Braintree createMerchant: " + result.getMessage());
+//                throw new PaymentServerException(result.getMessage());
+//            }
+//            
+//            BaasBoxLogger.debug("BraintreeServer:: Merchant updated: " + merchantId);
+//        } catch (NotFoundException e) {
+//            throw new PaymentServerException("Payment Method Token not found.");
+//        } catch (ServerException | UnexpectedException | TooManyRequestsException e) {
+//            BaasBoxLogger.error("ERROR!! BraintreeServer::updateMerchant: ", e);
+//            throw new PaymentServerException("Payment Server Internal Error.");
+//        }
+//    }
 
     @Override
-    public String createTransaction(String paymentMethodToken, BigDecimal amount, BigDecimal serviceFee, String merchantId, String descriptor, boolean temp) 
+    public String createTransaction(String paymentMethodToken, BigDecimal amount, 
+            BigDecimal serviceFee, String merchantId, String descriptor, boolean temp, String bidId) 
             throws PaymentServerException {
         
         TransactionRequest request = null;
@@ -383,6 +440,9 @@ public class BraintreeServer extends PaymentProviderAbstract {
             request = new TransactionRequest()
                     .amount(amount)
                     .paymentMethodToken(paymentMethodToken)
+                    .descriptor().name(descriptor).phone("4153043850").url("yibbyapp.com").done()
+                    .customField("bid_id", bidId)
+                    .customField("is_temp", "true")
                     .options()
                         .submitForSettlement(false) // don't settle it
                         .done();
@@ -391,18 +451,24 @@ public class BraintreeServer extends PaymentProviderAbstract {
             BaasBoxLogger.debug("BraintreeServer::createTransaction: amount: " + amount + 
                     " merchantId: " + merchantId + " paymentMethodToken: " + paymentMethodToken + " serviceFee: " + serviceFee);
             
-            if (merchantId == null) {
-                throw new PaymentServerException("BraintreeServer::createTransaction: null merchantId.");
-            }
+//            if (merchantId == null) {
+//                throw new PaymentServerException("BraintreeServer::createTransaction: null merchantId.");
+//            }
             
             request = new TransactionRequest()
                     .amount(amount)
-                    .merchantAccountId(merchantId)
+// TODO: Fix this
+//                    .merchantAccountId(merchantId)
                     .paymentMethodToken(paymentMethodToken)
-                    .serviceFeeAmount(serviceFee)
+// TODO: Fix this
+//                    .serviceFeeAmount(serviceFee)
+                    .descriptor().name(descriptor).phone("4153043850").url("yibbyapp.com").done()
+                    .customField("bid_id", bidId)
+                    .customField("is_temp", "false")
                     .options()
                         .submitForSettlement(false) // don't settle it
-                        .holdInEscrow(true) // hold in escrow
+// TODO: Fix this
+//                        .holdInEscrow(true) // hold in escrow
                         .done();
         }
         
@@ -422,7 +488,7 @@ public class BraintreeServer extends PaymentProviderAbstract {
             if (transaction.getStatus() == Transaction.Status.AUTHORIZED) {
                 
                 String transactionId = transaction.getId();
-                BaasBoxLogger.debug("BraintreeServer: " + (temp ? "TEMP " : "")  + 
+                BaasBoxLogger.debug("BraintreeServer:: " + (temp ? "TEMP " : "")  + 
                         "Transaction authorized: " + transactionId + " for customer " + transaction.getCustomer().getId() + 
                         ", amount: " + amount + 
                         ", and serviceFee: " + serviceFee);
@@ -456,6 +522,32 @@ public class BraintreeServer extends PaymentProviderAbstract {
         throw new PaymentServerException(result.getMessage());
     }
 
+  @Override
+  public boolean canSettleTransaction(String transactionId) throws PaymentServerException {
+      try {
+          Transaction transaction = gateway.transaction().find(transactionId);
+          
+          if (transaction != null) {
+              Status xnStatus = transaction.getStatus();
+              
+              BaasBoxLogger.debug("BraintreeServer:: getEscrowStatus for xn: " + transactionId + 
+                      " status: " + xnStatus.toString());
+              
+              if (xnStatus != Status.AUTHORIZED) {
+                  return false;
+              }
+              return true;
+          }
+          
+      } catch (NotFoundException e) {
+          throw new PaymentServerException("Payment Method Token not found.");
+      } catch (ServerException | UnexpectedException | TooManyRequestsException e) {
+          BaasBoxLogger.error("ERROR!! BraintreeServer::releaseFromEscrow: ", e);
+          throw new PaymentServerException("Payment Server Internal Error.");
+      }
+      return false;
+  }
+    
     @Override
     public void settleTransaction(String transactionId) throws PaymentServerException {
         Result<Transaction> result = null;
@@ -472,17 +564,22 @@ public class BraintreeServer extends PaymentProviderAbstract {
         Transaction transaction = result.getTarget();
         if (transaction != null) {
             Status transactionStatus = transaction.getStatus();
-            EscrowStatus escrowStatus = transaction.getEscrowStatus();
             
 //            if ((transactionStatus != Transaction.Status.SETTLED && transactionStatus != Transaction.Status.SETTLING && transactionStatus != Transaction.Status.SUBMITTED_FOR_SETTLEMENT) || 
 //                (escrowStatus != Transaction.EscrowStatus.HELD && escrowStatus != Transaction.EscrowStatus.HOLD_PENDING)) {
-            BaasBoxLogger.debug("Ttransaction settleTransaction. transactionId=" + transactionId + 
-                    "transactionStatus=" + transactionStatus.toString() + " escrowStatus=" + escrowStatus.toString() +
+            BaasBoxLogger.debug("BraintreeServer:: Transaction settleTransaction. transactionId=" + transactionId + 
+                    " transactionStatus=" + ((transactionStatus != null) ? transactionStatus.toString() : "") +
                     " Processor Response: " + transaction.getProcessorResponseText() + " Code: " + transaction.getProcessorResponseCode());
 //            }
         }
         
         if (!result.isSuccess()) {
+            if (result.getErrors().getAllDeepValidationErrors().size() > 0) {
+                for (ValidationError error : result.getErrors().getAllDeepValidationErrors()) {
+                    BaasBoxLogger.debug("Error! Message in Braintree settleTransaction: " + error.getMessage()); 
+                }
+            }
+            
             throw new PaymentServerException(result.getMessage());
         }
         
@@ -509,6 +606,11 @@ public class BraintreeServer extends PaymentProviderAbstract {
             Result<Transaction> result = gateway.transaction().voidTransaction(transactionId);
     
             if (!result.isSuccess()) {
+                if (result.getErrors().getAllDeepValidationErrors().size() > 0) {
+                    for (ValidationError error : result.getErrors().getAllDeepValidationErrors()) {
+                        BaasBoxLogger.debug("Error! Message in Braintree voidTransaction: " + error.getMessage()); 
+                    }
+                }
                 throw new PaymentServerException(result.getMessage());
             }
             
@@ -520,63 +622,94 @@ public class BraintreeServer extends PaymentProviderAbstract {
             throw new PaymentServerException("Payment Server Internal Error.");
         }
     }
-
-    @Override
-    public void releaseFromEscrow(String transactionId) throws PaymentServerException {
-        try {
-            Result<Transaction> result = gateway.transaction().releaseFromEscrow(transactionId);
     
-            Transaction transaction = result.getTarget();
-            if (transaction != null) {
-                Status transactionStatus = transaction.getStatus();
-                EscrowStatus escrowStatus = transaction.getEscrowStatus();
-                
-//                if (transactionStatus != Transaction.Status.SETTLED || (escrowStatus != Transaction.EscrowStatus.RELEASE_PENDING && escrowStatus != Transaction.EscrowStatus.RELEASED)) {
-                    BaasBoxLogger.debug("Ttransaction releaseFromEscrow. transactionId=" + transactionId + 
-                            "transactionStatus=" + transactionStatus.toString() + " escrowStatus=" + escrowStatus.toString() +
-                            " Processor Response: " + transaction.getProcessorResponseText() + " Code: " + transaction.getProcessorResponseCode());
+// TODO: Fix this
+//    @Override
+//    public void releaseFromEscrow(String transactionId) throws PaymentServerException {
+//        try {
+//            Result<Transaction> result = gateway.transaction().releaseFromEscrow(transactionId);
+//    
+//            Transaction transaction = result.getTarget();
+//            if (transaction != null) {
+//                Status transactionStatus = transaction.getStatus();
+//                EscrowStatus escrowStatus = transaction.getEscrowStatus();
+//                
+////                if (transactionStatus != Transaction.Status.SETTLED || (escrowStatus != Transaction.EscrowStatus.RELEASE_PENDING && escrowStatus != Transaction.EscrowStatus.RELEASED)) {
+//                    BaasBoxLogger.debug("BraintreeServer:: Transaction releaseFromEscrow. transactionId=" + transactionId + 
+//                            " transactionStatus=" + transactionStatus.toString() + " escrowStatus=" + escrowStatus.toString() +
+//                            " Processor Response: " + transaction.getProcessorResponseText() + " Code: " + transaction.getProcessorResponseCode());
+////                }
+//            }
+//            
+//            if (!result.isSuccess()) {
+//                throw new PaymentServerException(result.getMessage());
+//            }
+//            
+//            BaasBoxLogger.debug("BraintreeServer: Transaction released from escrow: " + transactionId);
+//        } catch (NotFoundException e) {
+//            throw new PaymentServerException("Payment Method Token not found.");
+//        } catch (ServerException | UnexpectedException | TooManyRequestsException e) {
+//            BaasBoxLogger.error("ERROR!! BraintreeServer::releaseFromEscrow: ", e);
+//            throw new PaymentServerException("Payment Server Internal Error.");
+//        }
+//    }
+//    
+//    @Override
+//    public boolean canReleaseFromEscrow(String transactionId) throws PaymentServerException {
+//        try {
+//            Transaction transaction = gateway.transaction().find(transactionId);
+//            
+//            if (transaction != null) {
+//                EscrowStatus escrowStatus = transaction.getEscrowStatus();
+//                
+//                BaasBoxLogger.debug("BraintreeServer:: getEscrowStatus for xn: " + transactionId + 
+//                        " status: " + escrowStatus.toString());
+//                
+//                if (escrowStatus != EscrowStatus.HELD) {
+//                    return false;
 //                }
-            }
-            
-            if (!result.isSuccess()) {
-                throw new PaymentServerException(result.getMessage());
-            }
-            
-            BaasBoxLogger.debug("BraintreeServer: Transaction released from escrow: " + transactionId);
-        } catch (NotFoundException e) {
-            throw new PaymentServerException("Payment Method Token not found.");
-        } catch (ServerException | UnexpectedException | TooManyRequestsException e) {
-            BaasBoxLogger.error("ERROR!! BraintreeServer::releaseFromEscrow: ", e);
-            throw new PaymentServerException("Payment Server Internal Error.");
-        }
-    }
+//                return true;
+//            }
+//            
+//        } catch (NotFoundException e) {
+//            throw new PaymentServerException("Payment Method Token not found.");
+//        } catch (ServerException | UnexpectedException | TooManyRequestsException e) {
+//            BaasBoxLogger.error("ERROR!! BraintreeServer::releaseFromEscrow: ", e);
+//            throw new PaymentServerException("Payment Server Internal Error.");
+//        }
+//        return false;
+//    }
     
+    
+ // TODO: Fix this because it's not used today. Braintree's merchant integration isn't there, so no webhooks. 
     public void processWebhook(String signature, String payload) throws SqlInjectionException, InvalidModelException {
         
         WebhookNotification notification = gateway.webhookNotification().parse(signature, payload);
         String merchantId = null;
         
         if (notification != null) {
+            merchantId = notification.getMerchantAccount().getId();
+            BaasBoxLogger.info("BraintreeServer::processWebhook notification: " + notification.toString() + 
+                               " kind: " + notification.getKind().toString() + 
+                               " merchantId: " + merchantId);
+
             DbHelper.reconnectAsAdmin();
             
             switch (notification.getKind()) {
             case SUB_MERCHANT_ACCOUNT_APPROVED:
     
-                merchantId = notification.getMerchantAccount().getId();
                 CaberService.updateDriverPaymentAccountStatus(merchantId, PaymentAccountStatus.APPROVED);
                 
                 break;
                 
             case SUB_MERCHANT_ACCOUNT_DECLINED:
                 
-                merchantId = notification.getMerchantAccount().getId();
                 CaberService.updateDriverPaymentAccountStatus(merchantId, PaymentAccountStatus.DECLINED);
                 
                 break;
                 
             case DISBURSEMENT_EXCEPTION: 
                 
-                merchantId = notification.getMerchantAccount().getId();
                 CaberService.updateDriverPaymentAccountStatus(merchantId, PaymentAccountStatus.DISBURSEMENT_EXCEPTION);
                 
             case CHECK: 

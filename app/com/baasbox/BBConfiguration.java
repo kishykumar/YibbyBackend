@@ -93,6 +93,10 @@ public class BBConfiguration implements IBBConfigurationKeys {
 		return this.configuration.getString(ADMIN_PASSWORD);
 	}
 
+    public Boolean getAppSandbox(){
+        return this.configuration.getBoolean(APPLICATION_SANDBOX);
+    }   
+    
 	public   Boolean getStatisticsSystemOS(){
 		return this.configuration.getBoolean(STATISTICS_SYSTEM_OS);
 	}	

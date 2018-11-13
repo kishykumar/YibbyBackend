@@ -11,6 +11,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 @JsonPropertyOrder({
     "name",
     "phoneNumber",
+    "referralCode",
     "profilePicture",
     "email",
     "workLocation",
@@ -24,6 +25,8 @@ public class RiderProfileBean extends ProfileBean {
     private String name;
     @JsonProperty("phoneNumber")
     private String phoneNumber;
+    @JsonProperty("referralCode")
+    private String referralCode;
     @JsonProperty("profilePicture")
     private String profilePicture;
     @JsonProperty("email")
@@ -61,7 +64,17 @@ public class RiderProfileBean extends ProfileBean {
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
     }
-    
+
+    @JsonProperty("referralCode")
+    public String getReferralCode() {
+        return referralCode;
+    }
+
+    @JsonProperty("referralCode")
+    public void setReferralCode(String referralCode) {
+        this.referralCode = referralCode;
+    }
+
     @JsonProperty("profilePicture")
     public String getProfilePicture() {
         return profilePicture;

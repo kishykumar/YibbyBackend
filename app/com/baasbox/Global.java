@@ -48,6 +48,7 @@ import com.baasbox.security.ScriptingSandboxSecurityManager;
 import com.baasbox.security.SessionTokenProviderFactory;
 import com.baasbox.security.SessionTokenProviderMemory;
 import com.baasbox.service.logging.BaasBoxLogger;
+import com.baasbox.service.payment.PaymentService;
 import com.baasbox.service.storage.StatisticsService;
 import com.baasbox.util.BBJson;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -236,9 +237,11 @@ public class Global extends GlobalSettings {
         // Initialize BackgroundPaymentProcessor
         PaymentProcessor.getPaymentProcessor();
 
+        PaymentService.getInstance();
+        
         // Initialize PhoneNumberManager
         PhoneNumberManager.getPhoneNumberManager();
-
+        
         // Initialize Tracking Service
         TrackingService.getTrackingService();
 

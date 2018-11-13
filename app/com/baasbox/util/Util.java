@@ -20,11 +20,15 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 
 import com.baasbox.service.logging.BaasBoxLogger;
@@ -106,4 +110,31 @@ public class Util {
 			}
 		}
 	}
+	
+	public static String createRandomCode() {
+        
+        char[] chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890".toCharArray();
+        StringBuilder sb = new StringBuilder();
+        int codeLength = 6;
+        
+        Random random = new SecureRandom();
+        for (int i = 0; i < codeLength; i++) {
+            char c = chars[random.nextInt(chars.length)];
+            sb.append(c);
+        }
+        
+        return sb.toString();
+    }
+    
+	public static String encrypt(String generatedKey) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA");
+            md.update(generatedKey.getBytes("UTF-8"));
+            byte digest[] = md.digest();
+            return (new String(Base64.encodeBase64(digest)));
+        }
+        catch (Exception e) {
+            return null;
+        }
+    }
 }

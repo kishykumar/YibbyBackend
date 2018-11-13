@@ -35,6 +35,7 @@ import com.baasbox.dao.exception.BidNotFoundException;
 import com.baasbox.dao.exception.InvalidModelException;
 import com.baasbox.dao.exception.SqlInjectionException;
 import com.baasbox.databean.BidBean;
+import com.baasbox.exception.PaymentServerException;
 import com.baasbox.push.databean.RidePushBeanDriver;
 import com.baasbox.util.JSONFormats;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -44,6 +45,9 @@ import com.orientechnologies.orient.core.record.impl.ODocument;
 
 public class Bid extends Controller {
 	public static final String BID_PRICE_FIELD_NAME="bidPrice";
+	public static final String BID_RANGE_LOW_PRICE_FIELD_NAME="bidRangeLowPrice";
+	public static final String BID_RANGE_HIGH_PRICE_FIELD_NAME="bidRangeHighPrice";
+	public static final String BID_SUGGESTED_PRICE_FIELD_NAME="bidSuggestedPrice";
 	
 	public static final String PICKUP_LAT_FIELD_NAME="pickupLat";
 	public static final String PICKUP_LONG_FIELD_NAME="pickupLong";
@@ -145,7 +149,7 @@ public class Bid extends Controller {
 		ObjectMapper mapper = new ObjectMapper();
 		try {
 			b = mapper.treeToValue(bodyJson, BidBean.class);
-		} 
+		}
 		catch (JsonProcessingException e1) {
 			return badRequest("Error in Bid JSON parsing." + ((e1.getMessage() != null) ? e1.getMessage() : "No message"));
 		}
@@ -175,8 +179,9 @@ public class Bid extends Controller {
 	            // no drivers available, inform the device that no drivers were found. 
 	            return status(CustomHttpCode.NO_DRIVERS_ACTIVE.getBbCode(), CustomHttpCode.NO_DRIVERS_ACTIVE.getDescription());
 	        }
-		}
-		catch (Throwable e) {
+		} catch (PaymentServerException e) {
+            return badRequest(e.getMessage());
+        } catch (Throwable e) {
 			BaasBoxLogger.error("ERROR! createBid stack: " + ExceptionUtils.getFullStackTrace(e));
 			return badRequest(ExceptionUtils.getFullStackTrace(e));
 		}

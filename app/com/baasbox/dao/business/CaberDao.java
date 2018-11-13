@@ -82,6 +82,9 @@ public class CaberDao extends UserDao {
     public final static String PROFILE_PICTURE_FIELD_NAME = "profilePicture";
     public final static String PHONE_NUMBER_FIELD_NAME = "phoneNumber";
 
+    public final static String INVITE_CODE_FIELD_NAME = "inviteCode";
+    public final static String REFERRAL_CODE_FIELD_NAME = "referralCode";
+
     public final static String EMAIL_VERIFIED_FIELD_NAME = "emailVerified";
     public final static String EMAIL_VERIFICATION_KEY_FIELD_NAME = "emailVerificationKey";
 
@@ -91,7 +94,8 @@ public class CaberDao extends UserDao {
 
     // Payment
     public final static String PAYMENT_CUSTOMER_ID_FIELD_NAME = "paymentCustomerId";
-    public final static String PAYMENT_ACCOUNT_APPROVED_FIELD_NAME = "paymentAccountApproved";
+    public final static String PAYMENT_MERCHANT_ID_FIELD_NAME = "paymentMerchantId";
+    public final static String PAYMENT_MERCHANT_APPROVED_FIELD_NAME = "paymentMerchantApproved";
 
     //////////////////// Rider fields //////////////////
     public final static String NAME_FIELD_NAME = "name";
@@ -155,7 +159,7 @@ public class CaberDao extends UserDao {
     public final static String ENCRYPTED_DRIVER_DETAILS_FIELD_NAME = "encryptedDriverDetails";
     
     public ODocument getByMerchantId(String merchantId) throws SqlInjectionException, InvalidModelException {
-        QueryParams criteria = QueryParams.getInstance().where(PAYMENT_CUSTOMER_ID_FIELD_NAME + "=?")
+        QueryParams criteria = QueryParams.getInstance().where(PAYMENT_MERCHANT_ID_FIELD_NAME + "=?")
                 .params(new String[] { merchantId });
         List<ODocument> listOfCabers = this.get(criteria);
         if (listOfCabers == null || listOfCabers.size() == 0)
@@ -169,6 +173,28 @@ public class CaberDao extends UserDao {
         return doc;
     }
 
+    public List<ODocument> getCaberWithReferralCode(String referralCode)
+            throws SqlInjectionException, InvalidModelException {
+
+        QueryParams criteria = QueryParams.getInstance().where(CaberDao.REFERRAL_CODE_FIELD_NAME + "=?")
+                .params(new String[] { referralCode });
+
+        List<ODocument> listOfCabers = this.get(criteria);
+        if (listOfCabers == null || listOfCabers.size() == 0)
+            return null;
+
+        for (ODocument caber : listOfCabers) {
+            try {
+                // Need to make sure whether we need to check this. It will be
+                // expensive.
+                checkModelDocument(caber);
+            } catch (InvalidModelException e) {
+                throw new InvalidModelException("Not a caber " + MODEL_NAME);
+            }
+        }
+        return listOfCabers;
+    }
+    
     public List<ODocument> getCaberWithEmailVerificationKey(String emailVerificationKey)
             throws SqlInjectionException, InvalidModelException {
 
